@@ -5,8 +5,9 @@ require 'stringio'
 require 'digest/md5'
 
 class AutoPCH
-  ARG_TAKE1_REGEXP = /^-(?:I|idirafter|imacros|include|iprefix|isystem|iwithprefix|iwithprefixbefore|L|D|U|x|MF|MT|MQ|aux-info|-param|A|Xlinker|u)(.*)$/
-  PCH_SKIP_ARG_REGEXP = /^-(c|fsyntax-only|code-completion-at)/
+  ARG1_REGEXP = /^-(?:I|idirafter|imacros|include|iprefix|isystem|iwithprefix|iwithprefixbefore|L|D|U|x|MF|MT|MQ|aux-info|-param|A|Xlinker|u)(.*)$/
+  PCH_SKIP_ARG_REGEXP = /^-(?:fsyntax-only|code-completion-at)/
+  PCH_SKIP_ARG1_REGEXP = /^-(?:o)(.*)$/
 
   class PPDirectiveReader
     def initialize(path)
@@ -33,7 +34,7 @@ class AutoPCH
       l = @file.gets
 
       # skip comments
-      while start = l.index(/\/[\/*]/)
+      while l and start = l.index(/\/[\/*]/)
         if $& == '//'         # c++ style comment
           l = l[0, start]
         else                  # c style comment
@@ -59,7 +60,6 @@ class AutoPCH
   def initialize(args)
     prepare
     parse_args args
-    compile_all if valid_args?
   end
 
   def prepare
@@ -68,29 +68,43 @@ class AutoPCH
   end
 
   def parse_args(args)
+    @driver = File.basename($0)
+    @args = args.dup
     return if args.empty?
 
-    @args = []
-    @driver = args[0]
-    @pch_lang = @driver =~ /g\+\+/ ? 'c++-header' : 'c-header'
+    i = 0
+    if @driver == 'autopch'
+      i = 1
+      @driver = args[0]
+      @args.shift
+    end
+
+    @cc_args = []
     @pch_args = []
+    @pch_lang = @driver =~ /g\+\+/ ? 'c++-header' : 'c-header'
     @input_files = []
-    i = 1
+
     while i < args.length
       arg = args[i]
       case arg
-      when ARG_TAKE1_REGEXP
-        @args << arg
+      when '-c'
+        @c_opt_given = true
+        @cc_args << arg
+      when ARG1_REGEXP
+        @cc_args << arg
         @pch_args << arg
         if $1.empty?
           i += 1
-          @args << arg
-          @pch_args << arg[i]
+          @cc_args << args[i]
+          @pch_args << args[i]
         end
       when PCH_SKIP_ARG_REGEXP
-        @args << arg
+        @cc_args << arg
+      when PCH_SKIP_ARG1_REGEXP
+        @cc_args << arg
+        @cc_args << args[i += 1] if $1.empty?
       when /^-/
-        @args << arg
+        @cc_args << arg
         @pch_args << arg
       else
         @input_files << arg
@@ -98,9 +112,17 @@ class AutoPCH
       i += 1
     end
   end
-  
+
+  def process
+    if valid_args?
+      compile_all
+    else
+      fallback
+    end
+  end
+
   def valid_args?
-    @input_files and !@input_files.empty?
+    @input_files and !@input_files.empty? and @c_opt_given
   end
 
   def compile_all
@@ -110,16 +132,23 @@ class AutoPCH
     end
   end
 
+  def fallback
+    exec(@driver, *@args)
+  end
+
   def compile(file, h)
-    args = ['-include', h] + @args + [file]
+    args = h ? ['-include', h] : []
+    args += @cc_args + [file]
     system(@driver, *args)
   end
 
   def make_pch(input_file)
     path = path_absolutize(input_file)
     return unless path
-    
+
     header = read_header(path)
+    return if header =~ /\A\s*\z/ # no worth to make pch
+
     digest = make_header_digest(path, header)
     h = cache_path(h_name(digest))
     pch = cache_path(pch_name(digest))
@@ -176,9 +205,9 @@ class AutoPCH
     cond_start = nil
     cond_depth = 0
     while dir = reader.read_directive
-      dirs << dir
+      name, value = (dir =~ /^\s*#([^\s]*)(?:\s+([^\s]*))/) && $1, $2
+      break if name == 'pragma' and value == 'hdrstop'
 
-      name = (dir =~ /^\s*#([^\s]*)/) && $1
       case name
       when 'if', 'ifdef'
         unless cond_start
@@ -193,6 +222,7 @@ class AutoPCH
         end
       end
 
+      dirs << dir
       i += 1
     end
     reader.close
@@ -202,4 +232,4 @@ class AutoPCH
   end
 end
 
-AutoPCH.new(ARGV)
+AutoPCH.new(ARGV).process
