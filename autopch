@@ -1,0 +1,205 @@
+#!/usr/bin/env ruby
+
+require 'pathname'
+require 'stringio'
+require 'digest/md5'
+
+class AutoPCH
+  ARG_TAKE1_REGEXP = /^-(?:I|idirafter|imacros|include|iprefix|isystem|iwithprefix|iwithprefixbefore|L|D|U|x|MF|MT|MQ|aux-info|-param|A|Xlinker|u)(.*)$/
+  PCH_SKIP_ARG_REGEXP = /^-(c|fsyntax-only|code-completion-at)/
+
+  class PPDirectiveReader
+    def initialize(path)
+      @path = path
+      @file = File.open(path, 'rb');
+    end
+
+    def close
+      @file.close
+    end
+
+    def read_directive
+      dir = read_nonblank_code_line
+      return nil unless dir =~ /^\s*#/
+
+      # handle backslashes
+      l = dir
+      dir << l while l =~ /\\\s*$/ and l = read_code_line
+
+      dir
+    end
+
+    def read_code_line
+      l = @file.gets
+
+      # skip comments
+      while start = l.index(/\/[\/*]/)
+        if $& == '//'         # c++ style comment
+          l = l[0, start]
+        else                  # c style comment
+          pos = start
+          while !(last = l.index('*/', pos)) and r = @file.gets
+            pos = l.length
+            l << r
+          end
+          l[start, last + 2] = ' ' if last
+        end
+      end
+
+      l
+    end
+
+    def read_nonblank_code_line
+      while l = read_code_line
+        return l unless l =~ /^\s*$/
+      end
+    end
+  end
+
+  def initialize(args)
+    prepare
+    parse_args args
+    compile_all if valid_args?
+  end
+
+  def prepare
+    @cache_dir = "#{ENV['HOME']}/.autopch"
+    Dir.mkdir @cache_dir unless File.exists? @cache_dir
+  end
+
+  def parse_args(args)
+    return if args.empty?
+
+    @args = []
+    @driver = args[0]
+    @pch_lang = @driver =~ /g\+\+/ ? 'c++-header' : 'c-header'
+    @pch_args = []
+    @input_files = []
+    i = 1
+    while i < args.length
+      arg = args[i]
+      case arg
+      when ARG_TAKE1_REGEXP
+        @args << arg
+        @pch_args << arg
+        if $1.empty?
+          i += 1
+          @args << arg
+          @pch_args << arg[i]
+        end
+      when PCH_SKIP_ARG_REGEXP
+        @args << arg
+      when /^-/
+        @args << arg
+        @pch_args << arg
+      else
+        @input_files << arg
+      end
+      i += 1
+    end
+  end
+  
+  def valid_args?
+    @input_files and !@input_files.empty?
+  end
+
+  def compile_all
+    @input_files.each do |file|
+      h = make_pch(file)
+      compile(file, h)
+    end
+  end
+
+  def compile(file, h)
+    args = ['-include', h] + @args + [file]
+    system(@driver, *args)
+  end
+
+  def make_pch(input_file)
+    path = path_absolutize(input_file)
+    return unless path
+    
+    header = read_header(path)
+    digest = make_header_digest(path, header)
+    h = cache_path(h_name(digest))
+    pch = cache_path(pch_name(digest))
+
+    if cache_exists?(h, pch)
+      # touch
+    else
+      compile_header(header, h, pch)
+    end
+
+    h
+  end
+
+  def path_absolutize(path)
+    Pathname.new(path).realpath.to_s rescue nil
+  end
+
+  def read_header(path)
+    return slurp_until_first_c_token(path)
+  end
+
+  def make_header_digest(path, header)
+    src = StringIO.new
+    src << path
+    src << @pch_args.join(' ')
+    src << header
+    return Digest::MD5.hexdigest(src.string)
+  end
+
+  def h_name(digest) "#{digest}.h" end
+
+  def pch_name(digest) "#{h_name(digest)}.gch" end
+
+  def cache_path(name) "#{@cache_dir}/#{name}" end
+
+  def cache_exists?(h, pch)
+    File.exists?(h) and File.exists?(pch)
+  end
+
+  def compile_header(header, h, pch)
+    # write header contents
+    File.open(h, 'wb') {|f| f.write(header)}
+    
+    # compile it
+    args = @pch_args + ['-x', @pch_lang, '-o', pch, h]
+    system(@driver, *args)
+  end
+  
+  def slurp_until_first_c_token(path)
+    reader = PPDirectiveReader.new(path)
+
+    i = 0
+    dirs = []
+    cond_start = nil
+    cond_depth = 0
+    while dir = reader.read_directive
+      dirs << dir
+
+      name = (dir =~ /^\s*#([^\s]*)/) && $1
+      case name
+      when 'if', 'ifdef'
+        unless cond_start
+          cond_start = i
+          cond_depth = 0
+        end
+        cond_depth += 1
+      when 'endif'
+        if cond_start
+          cond_depth -= 1
+          cond_start = nil if cond_depth == 0
+        end
+      end
+
+      i += 1
+    end
+    reader.close
+
+    dirs[cond_start..dirs.length] = [] if cond_start
+    dirs.join "\n"
+  end
+end
+
+AutoPCH.new(ARGV)
