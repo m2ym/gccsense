@@ -3,6 +3,7 @@
 require 'pathname'
 require 'stringio'
 require 'digest/md5'
+require 'fileutils'
 
 class AutoPCH
   ARG1_REGEXP = /^-(?:I|idirafter|imacros|include|iprefix|isystem|iwithprefix|iwithprefixbefore|L|D|U|x|MF|MT|MQ|aux-info|-param|A|Xlinker|u)(.*)$/
@@ -57,12 +58,25 @@ class AutoPCH
     end
   end
 
+  class DependencyFile
+    attr_reader :dependencies
+
+    def initialize(path)
+      dep = File.read(path)
+      start = dep.index(':')
+      @dependencies = start ? dep[start + 2..dep.length].split(/[\s\\]+/) : []
+      @dependencies.shift
+    end
+  end
+
   def initialize(args)
     prepare
     parse_args args
   end
 
   def prepare
+    @cwd = Dir.getwd
+    @tmp_dir = ENV['TMPDIR'] || ENV['TMP'] || ENV['TEMP'] || '/tmp'
     @cache_dir = "#{ENV['HOME']}/.autopch"
     Dir.mkdir @cache_dir unless File.exists? @cache_dir
   end
@@ -138,7 +152,7 @@ class AutoPCH
 
   def compile(file, h)
     args = h ? ['-include', h] : []
-    args += @cc_args + [file]
+    args += @cc_args + ['-I', @cwd, file]
     system(@driver, *args)
   end
 
@@ -150,13 +164,20 @@ class AutoPCH
     return if header =~ /\A\s*\z/ # no worth to make pch
 
     digest = make_header_digest(path, header)
-    h = cache_path(h_name(digest))
-    pch = cache_path(pch_name(digest))
+    dep = cache_path(dep_name(digest))
 
-    if cache_exists?(h, pch)
-      # touch
+    if file_exists? dep
+      dep_digest = make_dependency_digest(dep)
+      h = cache_path(h_name(dep_digest))
+      pch = cache_path(pch_name(dep_digest))
+    end
+
+    if file_exists? h, pch, dep
+      # LRU cache
+      now = Time.now
+      File.utime(now, now, h, pch, dep)
     else
-      compile_header(header, h, pch)
+      h, pch = compile_header(header, dep)
     end
 
     h
@@ -172,29 +193,64 @@ class AutoPCH
 
   def make_header_digest(path, header)
     src = StringIO.new
+    src << @cwd
+    src << @driver
     src << path
     src << @pch_args.join(' ')
     src << header
-    return Digest::MD5.hexdigest(src.string)
+    Digest::MD5.hexdigest(src.string)
   end
 
-  def h_name(digest) "#{digest}.h" end
+  def make_dependency_digest(dep)
+    deps = DependencyFile.new(dep).dependencies
+    src = StringIO.new
+    deps.each do |file|
+      if File.exists? file
+        src << file
+        src << File.mtime(file).to_i
+      end
+    end
+    Digest::MD5.hexdigest(src.string)
+  end
 
-  def pch_name(digest) "#{h_name(digest)}.gch" end
+  def h_name(base) "#{base}.h" end
+
+  def pch_name(base) "#{h_name(base)}.gch" end
+
+  def dep_name(base) "#{base}.dep" end
 
   def cache_path(name) "#{@cache_dir}/#{name}" end
 
-  def cache_exists?(h, pch)
-    File.exists?(h) and File.exists?(pch)
+  def file_exists?(*files)
+    files.all? {|file| file and File.exists?(file)}
   end
 
-  def compile_header(header, h, pch)
+  def compile_header(header, dep)
+    tmp_h = "#{@tmp_dir}/autopch.h"
+    tmp_pch = "#{@tmp_dir}/autopch.h.gch"
+
     # write header contents
-    File.open(h, 'wb') {|f| f.write(header)}
-    
-    # compile it
-    args = @pch_args + ['-x', @pch_lang, '-o', pch, h]
+    File.open(tmp_h, 'wb') {|f| f.write(header)}
+
+    # generate dependency file
+    args = @pch_args + ['-I', @cwd, '-MM', '-MF', dep, tmp_h]
     system(@driver, *args)
+
+    # compile header
+    args = @pch_args + ['-I', @cwd, '-x', @pch_lang, tmp_h]
+    system(@driver, *args)
+
+    if file_exists? dep, tmp_h, tmp_pch
+      # succeed
+      dep_digest = make_dependency_digest(dep)
+      h = cache_path(h_name(dep_digest))
+      pch = cache_path(pch_name(dep_digest))
+
+      FileUtils.cp tmp_h, h
+      FileUtils.cp tmp_pch, pch
+    end
+
+    [h, pch]
   end
   
   def slurp_until_first_c_token(path)
