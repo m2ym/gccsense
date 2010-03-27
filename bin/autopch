@@ -6,23 +6,34 @@ require 'digest/md5'
 require 'fileutils'
 
 class AutoPCH
-  ARG1_REGEXP = /^-(?:I|idirafter|imacros|include|iprefix|isystem|iwithprefix|iwithprefixbefore|L|D|U|x|MF|MT|MQ|aux-info|-param|A|Xlinker|u)(.*)$/
+  INCLUDE_DIR_REGEXP = /^-(?:I)(.*)$/
+  ARG1_REGEXP = /^-(?:idirafter|imacros|include|iprefix|isystem|iwithprefix|iwithprefixbefore|L|D|U|x|MF|MT|MQ|aux-info|-param|A|Xlinker|u)(.*)$/
   PCH_SKIP_ARG_REGEXP = /^-(?:fsyntax-only|code-completion-at)/
   PCH_SKIP_ARG1_REGEXP = /^-(?:o)(.*)$/
 
   class PPDirectiveReader
+    attr_reader :line
+
     def initialize(path)
       @path = path
       @file = File.open(path, 'rb');
+      @line = 1
     end
 
     def close
       @file.close
     end
 
-    def read_directive
+    def read_directive(skip_code = false)
       dir = read_nonblank_code_line
-      return nil unless dir =~ /^\s*#/
+      return unless dir
+      
+      while skip_code and dir !~ /^\s*#/
+        dir = read_nonblank_code_line
+        return unless dir
+      end
+
+      return unless dir =~ /^\s*#/
 
       # handle backslashes
       l = dir
@@ -32,7 +43,7 @@ class AutoPCH
     end
 
     def read_code_line
-      l = @file.gets
+      l = gets
 
       # skip comments
       while l and start = l.index(/\/[\/*]/)
@@ -40,7 +51,7 @@ class AutoPCH
           l = l[0, start]
         else                  # c style comment
           pos = start
-          while !(last = l.index('*/', pos)) and r = @file.gets
+          while !(last = l.index('*/', pos)) and r = gets
             pos = l.length
             l << r
           end
@@ -55,6 +66,16 @@ class AutoPCH
       while l = read_code_line
         return l unless l =~ /^\s*$/
       end
+    end
+
+    def read_remains
+      @remains ||= @file.read
+    end
+
+    def gets
+      l = @file.gets
+      @line += 1 if l
+      l
     end
   end
 
@@ -88,15 +109,15 @@ class AutoPCH
 
     i = 0
     if @driver == 'autopch'
-      i = 1
-      @driver = args[0]
-      @args.shift
+      i += 1
+      @driver = @args.shift
     end
 
     @cc_args = []
     @pch_args = []
     @pch_lang = @driver =~ /g\+\+/ ? 'c++-header' : 'c-header'
     @input_files = []
+    @include_dirs = []
 
     while i < args.length
       arg = args[i]
@@ -104,6 +125,17 @@ class AutoPCH
       when '-c'
         @c_opt_given = true
         @cc_args << arg
+      when INCLUDE_DIR_REGEXP
+        @cc_args << arg
+        @pch_args << arg
+        if $1.empty?
+          i += 1
+          @cc_args << args[i]
+          @pch_args << args[i]
+          @include_dirs << args[i]
+        else
+          @include_dirs << $1
+        end
       when ARG1_REGEXP
         @cc_args << arg
         @pch_args << arg
@@ -150,15 +182,16 @@ class AutoPCH
     exec(@driver, *@args)
   end
 
-  def compile(file, h)
-    args = h ? ['-include', h] : []
-    args += @cc_args + ['-I', @cwd, file]
-    system(@driver, *args)
+  def compile(c, h)
+    args = (h ? ['-include', h] : []) + @cc_args + ['-I', @cwd, c]
+    unless system(@driver, *args)
+      exit $?
+    end
   end
 
   def make_pch(input_file)
     path = path_absolutize(input_file)
-    return unless path
+    return input_file unless path
 
     header = read_header(path)
     return if header =~ /\A\s*\z/ # no worth to make pch
@@ -167,7 +200,7 @@ class AutoPCH
     dep = cache_path(dep_name(digest))
 
     if file_exists? dep
-      dep_digest = make_dependency_digest(dep)
+      dep_digest = make_dependency_digest(dep, digest)
       h = cache_path(h_name(dep_digest))
       pch = cache_path(pch_name(dep_digest))
     end
@@ -177,7 +210,8 @@ class AutoPCH
       now = Time.now
       File.utime(now, now, h, pch, dep)
     else
-      h, pch = compile_header(header, dep)
+      h, pch = compile_header(header, dep, digest)
+      return unless file_exists? h, pch
     end
 
     h
@@ -188,7 +222,42 @@ class AutoPCH
   end
 
   def read_header(path)
-    return slurp_until_first_c_token(path)
+    reader = PPDirectiveReader.new(path)
+
+    i = 0
+    dirs = []
+    cond_start = nil
+    cond_depth = 0
+    while dir = reader.read_directive
+      name, value = (dir =~ /^\s*#([^\s]*)(?:\s+([^\s]*))/) && $1, $2
+      break if name == 'pragma' and value == 'hdrstop'
+
+      case name
+      when 'if', 'ifdef', 'ifndef'
+        unless cond_start
+          cond_start = i
+          cond_depth = 0
+        end
+        cond_depth += 1
+      when 'endif'
+        if cond_start
+          cond_depth -= 1
+          cond_start = nil if cond_depth == 0
+        end
+      when 'include'
+        if value and value[0] == ?\"
+          file = find_header_file(value[1...value.length - 1], [File.dirname(path), *@include_dirs])
+          break if file and !include_guard?(file)
+        end
+      end
+
+      dirs << dir
+      i += 1
+    end
+    reader.close
+
+    dirs[cond_start..dirs.length] = [] if cond_start
+    dirs.join("\n")
   end
 
   def make_header_digest(path, header)
@@ -201,9 +270,10 @@ class AutoPCH
     Digest::MD5.hexdigest(src.string)
   end
 
-  def make_dependency_digest(dep)
+  def make_dependency_digest(dep, salt)
     deps = DependencyFile.new(dep).dependencies
     src = StringIO.new
+    src << salt
     deps.each do |file|
       if File.exists? file
         src << file
@@ -225,7 +295,7 @@ class AutoPCH
     files.all? {|file| file and File.exists?(file)}
   end
 
-  def compile_header(header, dep)
+  def compile_header(header, dep, digest)
     tmp_h = "#{@tmp_dir}/autopch.h"
     tmp_pch = "#{@tmp_dir}/autopch.h.gch"
 
@@ -234,15 +304,19 @@ class AutoPCH
 
     # generate dependency file
     args = @pch_args + ['-I', @cwd, '-MM', '-MF', dep, tmp_h]
-    system(@driver, *args)
+    unless system(@driver, *args)
+      exit $?
+    end
 
     # compile header
     args = @pch_args + ['-I', @cwd, '-x', @pch_lang, tmp_h]
-    system(@driver, *args)
+    unless system(@driver, *args)
+      exit $?
+    end
 
     if file_exists? dep, tmp_h, tmp_pch
       # succeed
-      dep_digest = make_dependency_digest(dep)
+      dep_digest = make_dependency_digest(dep, digest)
       h = cache_path(h_name(dep_digest))
       pch = cache_path(pch_name(dep_digest))
 
@@ -252,39 +326,45 @@ class AutoPCH
 
     [h, pch]
   end
-  
-  def slurp_until_first_c_token(path)
-    reader = PPDirectiveReader.new(path)
 
-    i = 0
-    dirs = []
-    cond_start = nil
-    cond_depth = 0
-    while dir = reader.read_directive
-      name, value = (dir =~ /^\s*#([^\s]*)(?:\s+([^\s]*))/) && $1, $2
-      break if name == 'pragma' and value == 'hdrstop'
+  def find_header_file(name, dirs)
+    dirs.each do |dir|
+      file = "#{dir}/#{name}"
+      return file if File.file?(file)
+    end
+    nil
+  end
+
+  def include_guard?(file)
+    reader = PPDirectiveReader.new(file)
+
+    first = reader.read_directive
+    return false unless first =~ /^\s*#ifndef\s+([^\s]+)$/
+    name = $1
+
+    second = reader.read_directive
+    return false unless second =~ /^\s*#define\s+#{name}$/
+
+    valid = false
+    cond_depth = 1
+    cond_toplev = 0
+    while dir = reader.read_directive(true)
+      valid = false
+      name = dir =~ /\s*#([^\s]+)/ && $1
 
       case name
-      when 'if', 'ifdef'
-        unless cond_start
-          cond_start = i
-          cond_depth = 0
-        end
+      when 'if', 'ifdef', 'ifndef'
         cond_depth += 1
       when 'endif'
-        if cond_start
-          cond_depth -= 1
-          cond_start = nil if cond_depth == 0
+        cond_depth -= 1
+        if cond_depth == 0
+          valid = true if cond_toplev == 0
+          cond_toplev += 1
         end
       end
-
-      dirs << dir
-      i += 1
     end
-    reader.close
 
-    dirs[cond_start..dirs.length] = [] if cond_start
-    dirs.join "\n"
+    valid
   end
 end
 
