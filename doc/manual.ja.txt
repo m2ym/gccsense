@@ -1,0 +1,379 @@
+Title: GCCSense - ユーザーマニュアル
+Numbering: yes
+CSS: style.css
+
+GCCSense ユーザーマニュアル
+===========================
+
+[Index](index.txt)
+
+\[[English](manual.txt)]
+
+* * *
+
+{toc}
+
+* * *
+
+はじめに
+--------
+
+### GCCSenseとは？ ###
+
+GCCSenseは[GCC][]のコード解析器を利用した開発援助ツールです。コンパイラの情報を利用するため非常に高精度なコード補完などが可能になります。独立したプログラムとして動作するので理論的にはどのエディタからも利用することができます。
+
+### 特徴 ###
+
+* 高精度コード補完
+* 自動構文チェック
+
+ダウンロード
+------------
+
+[GCCSenseのトップページ](index.ja.txt)からダウンロードできます。
+
+インストール
+------------
+
+インストールの前に上記のダウンロードページから適切なバージョンのGCCSenseとgcc-code-assistをダウンロードしておいてください。
+
+### gcc-code-assistのインストール ###
+
+gcc-code-assistはコード補完などの機能を搭載した独自のGCCです。基本的には[GCCのインストール手順](http://gcc.gnu.org/install/)に従いますが、ここではいくつかのプラットフォームに限って簡単に説明します。
+
+手順の中で一番重要なのはインストール先とプログラムサフィックスです。インストール先は特に指定しない場合は`/usr/local`になりますが、一般ユーザーでインストールする場合は`configure`スクリプトに`--prefix=$HOME`などを設定する必要があります。
+
+プログラムサフィックスは必須とまでは言えませんが、既存のGCCと独自のGCCが干渉しないようプログラム名を一意にしたほうが良いでしょう。GCCSenseではプログラムサフィックスとして`-code-assist`を推奨しています。これにより`gcc`は`gcc-code-assist`になり、`g++`は`g++-code-assist`になります。プログラムサフィックスを指定するには`configure`スクリプトに`--program-suffix=-code-assist`のように指定します。
+
+最近のマシンなら30分ぐらいでビルドできます。
+
+#### Debian系システム ####
+
+GCCのビルドに必要なパッケージをインストールしておきます。
+
+    $ sudo apt-get install build-essential libgmp3-dev libmpfr-dev flex
+
+gcc-code-assistをビルドしてインストールします。
+
+    $ tar xvjf gcc-code-assist-*.tar.bz2
+    $ cd gcc-code-assist-*
+    $ ./configure --program-suffix=-code-assist --enable-languages=c,c++ --disable-bootstrap --disable-multilib
+    $ make # -j2
+    $ sudo make install
+
+`--prefix=$HOME`を指定した場合は、`$HOME/bin`を`PATH`環境変数に設定しておく必要があります。
+
+最後に`gcc-code-assist`と`g++-code-assist`が動作することを確認してください。
+
+    $ gcc-code-assist --version
+    gcc-code-assist (GCC) 4.4.4 20100320 (prerelease)
+    Copyright (C) 2010 Free Software Foundation, Inc.
+    This is free software; see the source for copying conditions.  There is NO
+    warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+    $ g++-code-assist --version
+    g++-code-assist (GCC) 4.4.4 20100320 (prerelease)
+    Copyright (C) 2010 Free Software Foundation, Inc.
+    This is free software; see the source for copying conditions.  There is NO
+    warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+#### Mac OS X ####
+
+[MacPorts][]をインストールしておく必要があります。
+
+GCCのビルドに必要なパッケージをインストールします。
+
+    $ sudo port install gmp mpfr flex
+
+gcc-code-assistをビルドしてインストールします。
+
+    $ tar xvjf gcc-code-assist-*.tar.bz2
+    $ cd gcc-code-assist-*
+    $ ./configure --program-suffix=-code-assist --enable-languages=c,c++ --disable-bootstrap --disable-multilib --disable-nls --with-gmp-include=/opt/local/include --with-gmp-lib=/opt/local/lib --with-mpfr-include=/opt/local/include --with-mpfr-lib=/opt/local/lib --with-libiconv-prefix=/usr
+    $ make # -j2
+    $ sudo make install
+
+最後に`gcc-code-assist`と`g++-code-assist`が動作することを確認してください。
+
+    TODO
+
+### GCCSenseのインストール ###
+
+GCCSenseは[Ruby][] 1.8およびSQLite3バインディングを必要とします。Debian系システムなら次のようにインストールできます。
+
+    # apt-get install ruby libsqlite3-ruby
+
+Mac OS XではデフォルトでRubyがインストールされていますが、RubyGemsやSQLite3バインディングは別途インストールする必要があります。RubyGemsは[MacPorts][]から次のようにインストールできます。
+
+    $ sudo port install rb-rubygems
+
+続いて`gem`を使ってSQLite3バインディングをインストールします。
+
+    $ sudo gem install sqlite3-ruby
+
+GCCSense自体のインストールは単純で、`bin`ディレクトリを`PATH`環境変数に設定するか、`bin`ディレクトリ直下のプログラムを`PATH`環境変数に設定されたディレクトリにコピーするだけです。通常は後者のほうが楽でしょう。この作業は必須ではありませんが、この作業を行わなければエディタの設定が必要になります。
+
+    $ cd gccsense-*
+    $ sudo cp bin/* /usr/local/bin/
+
+ここで`/usr/local/bin`は`PATH`環境変数に設定されていることを想定しています。特に気にしなければ`/usr/bin`でも良いでしょう。
+
+最後に`gccrec`と`autopch`が動作することを確認してください。
+
+    $ gccrec --version
+    gccrec 0.0.1
+    $ autopch --version
+    autopch 0.0.1
+
+### Emacs拡張のインストール ###
+
+Emacs拡張は`etc/gccsense.el`にあります。`load-path`の通ったディレクトリにコピーするだけでインストールできます。
+
+    $ cp etc/gccsense.el ~/.emacs.d/
+
+`~/.emacs`に次のコードを書いておきます。
+
+    (require 'gccsense)
+
+### Vimプラグインのインストール ###
+
+Vimプラグインは`etc/gccsense.vim`にあります。`~/.vim/plugin`にコピーするだけでインストールできます。特に設定する必要はありません。
+
+    $ cp etc/gccsense.vim ~/.vim/plugin
+
+使い方
+------
+
+GCCSenseは次の4つの部品が協調することで動作します。読んでおくべき節を強調してあります。
+
+* [gcc-code-assist](#)
+
+  コード補完などの機能を搭載した独自のGCC
+
+* **[`gccrec`](#)**
+
+  GCCコマンドを記録・再生するGCCラッパー
+
+* [`autopch`](#)
+
+  自動的にプリコンパイルヘッダを有効にするGCCラッパー
+
+* **[エディタ](#)**
+
+  EmacsやVimなどのエディタ
+
+それぞれの使い方について詳しく説明します。
+
+### gcc-code-assist ###
+
+gcc-code-assistはコード補完などの機能を搭載した独自のGCCです。GCC 4.4がベースになっており上位互換性があります。現状利用できる拡張機能は次のようになります。
+
+#### コード補完 ####
+
+`-code-completion-at`オプションで補完位置を指定することにより、その位置で有効な補完候補を出力することができます。オプションには`<file>:<line>:<column>`という形式の値を指定します。`<file>`とコンパイラに渡すファイル名は完全に一致している必要があります。`<line>`および`<column>`は1ベースです。例を示します。
+
+    $ nl test.cpp
+         1  #include <string>
+         2  int main()
+         3  {
+         4      std::string s;
+         5      s.
+         6  }
+    $ # test.cppの5行目7カラム目（ドットの直後）でcから始まる補完候補を出力する
+    $ g++-code-assist -fsyntax-only -code-completion-at=test.cpp:5:7 test.cpp 2> /dev/null | grep '^completion: c'
+    completion: capacity "typename _Alloc::rebind<_CharT>::other::size_type std::basic_string<_CharT, _Traits, _Alloc>::capacity() const [with _CharT = char, _Traits = std::char_traits<char>, _Alloc = std::allocator<char>]"
+    completion: clear "void std::basic_string<_CharT, _Traits, _Alloc>::clear() [with _CharT = char, _Traits = std::char_traits<char>, _Alloc = std::allocator<char>]"
+    completion: copy "typename std::basic_string<_CharT, _Traits, _Alloc>::size_type std::basic_string<_CharT, _Traits, _Alloc>::copy(_CharT*, typename _Alloc::rebind<_CharT>::other::size_type, typename _Alloc::rebind<_CharT>::other::size_type) const [with _CharT = char, _Traits = std::char_traits<char>, _Alloc = std::allocator<char>]"
+    completion: c_str "const _CharT* std::basic_string<_CharT, _Traits, _Alloc>::c_str() const [with _CharT = char, _Traits = std::char_traits<char>, _Alloc = std::allocator<char>]"
+    completion: compare "int std::basic_string<_CharT, _Traits, _Alloc>::compare(const std::basic_string<_CharT, _Traits, _Alloc>&) const [with _CharT = char, _Traits = std::char_traits<char>, _Alloc = std::allocator<char>]"
+    completion: compare "int std::basic_string<_CharT, _Traits, _Alloc>::compare(typename _Alloc::rebind<_CharT>::other::size_type, typename _Alloc::rebind<_CharT>::other::size_type, const std::basic_string<_CharT, _Traits, _Alloc>&) const [with _CharT = char, _Traits = std::char_traits<char>, _Alloc = std::allocator<char>]"
+    completion: compare "int std::basic_string<_CharT, _Traits, _Alloc>::compare(typename _Alloc::rebind<_CharT>::other::size_type, typename _Alloc::rebind<_CharT>::other::size_type, const std::basic_string<_CharT, _Traits, _Alloc>&, typename _Alloc::rebind<_CharT>::other::size_type, typename _Alloc::rebind<_CharT>::other::size_type) const [with _CharT = char, _Traits = std::char_traits<char>, _Alloc = std::allocator<char>]"
+    completion: compare "int std::basic_string<_CharT, _Traits, _Alloc>::compare(const _CharT*) const [with _CharT = char, _Traits = std::char_traits<char>, _Alloc = std::allocator<char>]"
+    completion: compare "int std::basic_string<_CharT, _Traits, _Alloc>::compare(typename _Alloc::rebind<_CharT>::other::size_type, typename _Alloc::rebind<_CharT>::other::size_type, const _CharT*) const [with _CharT = char, _Traits = std::char_traits<char>, _Alloc = std::allocator<char>]"
+    completion: compare "int std::basic_string<_CharT, _Traits, _Alloc>::compare(typename _Alloc::rebind<_CharT>::other::size_type, typename _Alloc::rebind<_CharT>::other::size_type, const _CharT*, typename _Alloc::rebind<_CharT>::other::size_type) const [with _CharT = char, _Traits = std::char_traits<char>, _Alloc = std::allocator<char>]"
+
+補完候補の出力は`completion: <name> "<summary>"`という形式になります。
+
+現状、CとC++でコード補完を利用できます。言うまでもないですが、GCC 4.4でコンパイルできるコードなら、どんなコードでもコード補完を利用できます。Cでは`.`と`->`の直後、C++ではそれに加えて`::`の直後でのコード補完に対応しています。
+
+### `gccrec` ###
+
+前節のコード補完コマンドを利用すれば、エディタでのコード補完は難しい話ではないように思えるでしょう。基本的にはその通りなのですが、やっかいなのはGCCのコンパイルオプションをエディタが検知できない点です。次のコマンドを考えてみてください。
+
+    $ gcc -I../some/include/path -DSOME_SWITCH -c test.cpp
+
+`test.cpp`は`../some/include/path`から何か重要なヘッダをインクルードしているかもしれませんし、`SOME_SWITCH`が有効でないとエラーが起きるかもしれません。おそらくこれらのオプションなしではコード補完を行う前にエラーで終了してしまうでしょう。しかも普通は、このようなコマンドは`Makefile`の中に埋もれてしまっており、有効なコンパイルオプションを取得するのが困難になっています。
+
+`gccrec`はそのような問題を解決するためのGCCラッパーです。GCCラッパーとはGCCとして振る舞うが、その前後で特別な処理を行うプログラムのことを言います。`gccrec`はGCCに処理を移譲する前に、ソースファイルとコンパイルオプションの対応をデータベースに記録します。記録後はソースファイルを与えるだけで、データベースから有効なコンパイルオプションを取得して、記録されたコマンドと同様のコマンドを再生できます。
+
+例として次のコマンドを記録することを考えてみましょう
+
+    $ gcc -I../some/include/path -DSOME_SWITCH -c test.c
+
+記録するには`gcc`の前に`gccrec`を付けます。
+
+    $  gccrec gcc -I../some/include/path -DSOME_SWITCH -c test.c
+
+`gccrec`はコンパイラオプションからソースファイル（ここでは`test.c`）取得し、そのソースファイルとコンパイルオプションの対応をデータベースに記録します。
+
+データベースは`~/.gccrec`にSQLite3データベースとして記録されます。少し覗いてみましょう。
+
+    $ sqlite3 ~/.gccrec
+    sqlite> select file, args from gccrec;
+    /home/tomo/tmp/test.c|-I../some/include/path -DSOME_SWITCH -c
+
+ファイルとコンパイルオプションの対応が記録されているのが分かります。記録したコマンドを再生するには`gccrec`に`-r`オプションとソースファイルを指定します。
+
+    $ gccrec -r test.c
+
+`-v`オプションを指定することで、実際に実行されるコマンドを出力することもできます。
+
+    $ gccrec -v -r test.c
+    gcc -I../some/include/path -DSOME_SWITCH -c /home/tomo/tmp/test.c
+
+もうお気付きだと思いますが、エディタはこの`gccrec`コマンドに編集中のファイル名を渡してコンパイルやコード補完を行います。
+
+擬似的な例を示します。ユーザーは最初に`gccrec`でコンパイルオプションを記憶させておく必要があります。この際、`gcc`や`g++`でなく`gcc-code-assist`や`g++-code-assist`で記録しておかないと、後からコード補完などが行えません。
+
+    $ gccrec g++-code-assist -c test.cpp
+
+コード補完が要求されたら、エディタは内部で次のようなコマンドを実行します。
+
+    $ gccrec -v -r test.cpp -fsyntax-only -code-completion-at=$PWD/test.cpp:5:7
+    completion: ...
+
+重要なのは**最初に`gccrec`でコンパイルオプションを記憶させておくこと**です。これさえ一度やっておけば、後はプログラムが良きにはからってくれます。
+
+#### ビルドツール対応 ####
+
+多くのプロジェクトでは`make`などのビルドツールを利用しているでしょう。そのようなプロジェクトで、上記のように手動でコマンドを記録していては日が暮れてしまいます。`gccrec`はそのような場合でもうまく対処できます。
+
+`Makefile`を例にして考えます。一般的な`Makefile`では次のように外部から`CC`や`CXX`を与えることができます。
+
+    $ make CC='my-gcc' CXX='my-g++'
+
+この特性を利用して全てのソースファイルのコンパイルオプションを記録することができます。
+
+    $ make clean
+    $ make CC='gccrec gcc-code-assist' CXX='gccrec g++-code-asssist'
+
+記録中でも実際にコンパイルが行われますが、これは記録を極力成功させるためです。
+
+`~/.gccrec`に大量のレコードが登録されると思います。コンパイルオプションが変更されたり、新しいファイルが追加されない限り、この作業は一度だけで済みます。
+
+この手法により、[WebKit](http://webkit.org/)や[Mozilla Firefox](http://mozilla.com/firefox/)、[Google V8](http://code.google.com/p/v8/)の全てのソースコードでコード補完ができるようになったことを確認しています。
+
+### `autopch` ###
+
+`autopch`はGCCの解析速度を向上させるためのGCCラッパーです。自動的にプリコンパイルヘッダを適用するのでこのような名前になっています（AUTOmatic PreCompiled Header）。インクルードするヘッダファイルが巨大な場合などに顕著ですが、プリコンパイルヘッダを利用することでコンパイル速度をかなり改善することができます。コード補完などのレスポンス性能が求められる領域では、特にこの速度改善は重要です。
+
+しかしGCCのプリコンパイルヘッダには「Translation unitにつき一つのプリコンパイルヘッダしかインクルードできない」という重要な制限があります。プリコンパイルヘッダの特性上、これは仕方がないのですが、通常は次のように二個以上のヘッダをインクルードしているでしょう。
+
+test.cpp:
+
+    #include <iostream>
+    #include <string>
+    #include <vector>
+    int main() {...}
+
+このような場合は、インクルード部分を`stdafx.h`のような特別なヘッダに括りだして、そのヘッダをプリコンパイルヘッダにするというのが常套手段になります。
+
+stfafx.h:
+
+    #include <iostream>
+    #include <string>
+    #include <vector>
+
+test.cpp:
+
+    #include <stdafx.h>
+    int main() {...}
+
+プリコンパイル:
+
+    $ # 一度だけ
+    $ g++ stdafx.h
+
+コンパイル:
+
+    $ g++ -c test.cpp
+
+これによりコンパイル速度は向上するのですが、いかんせん手間がかかりすぎます。プリコンパイルヘッダの利用が増えないのは、この手間が一番の理由でしょう。`autopch`はまさにこの手間を自動化してくれるツールなのです。使い方は簡単で、`gccrec`と同様、`gcc`の前に`autopch`を付けるだけです。なお`-c`オプションを渡さないと、リンクとみなされるので注意してください。
+
+    $ autopch g++ -c test.cpp
+
+ヘッダをプリコンパイルする分、最初のコンパイルは遅くなりますが、二度目以降は速度が向上します。`~/.autopch`にヘッダの依存関係や実際のプリコンパイルヘッダが格納されていきます。プリコンパイルヘッダは巨大になりがちなので`autopch`の多用は禁物です。
+
+GCCSenseではコード補完などのレスポンス性能を改善するために`autopch`を利用しています。
+
+#### ベンチマーク ####
+
+コード補完を想定した環境でどれだけ改善されるかの一例を示します。
+
+    $ # autopchなし
+    $ time g++ -fsyntax-only -c test.cpp
+    g++ -fsyntax-only -c test.cpp  4.49s user 0.19s system 95% cpu 4.915 tota
+    $ # autopchあり初回
+    $ time autopch g++ -fsyntax-only -c test.cpp
+    autopch g++ -fsyntax-only -c test.cpp  10.16s user 0.97s system 96% cpu 11.531 total
+    $ # autopchあり二回目
+    $ time autopch g++ -fsyntax-only -c test.cpp
+    autopch g++ -fsyntax-only -c test.cpp  0.42s user 0.06s system 94% cpu 0.504 total
+    $ # autopchあり三回目
+    time autopch g++ -fsyntax-only -c test.cpp
+    autopch g++ -fsyntax-only -c test.cpp  0.38s user 0.10s system 90% cpu 0.524 total
+
+### エディタ ###
+
+各エディタの拡張・プラグインのインストールの仕方は[インストール](#)を参照してください。エディタからコード補完などを行うには、**最初に`gccrec`でコンパイルオプションの記録を行っておく必要があります**。記録方法については[`gccrec`](#)を参照してください。なお、コンパイルオプションなしでコンパイルできるソースファイルにおいてはその限りではありません。
+
+#### Emacs ####
+
+利用の前にまず正しくインストールされたか診断を行ってください。`M-x gccsense-diagnose`で診断を開始します。問題がなければミニバッファに`Everything OK!`と表示されます。エラーが表示されたら、内容に従って問題を修正してください。それでも直らない場合は開発者に連絡してください。
+
+コード補完を行うには`.`や`->`の直後に`M-x gccsense-complete`します。
+
+![](gccsense-emacs-1.png)
+
+[Auto Complete Mode](http://cx4a.org/software/auto-complete/)を利用しているなら`M-x ac-complete-gccsense`でも補完を行えます。
+
+![](gccsense-emacs-2.png)
+
+これらのコマンドを`C-c .`などに割り当てると良いでしょう。
+
+    (add-hook 'c-mode-common-hook
+              (lambda ()
+                (local-set-key (kbd "C-c .") 'gccsense-complete)
+                ;; あるいは
+                (local-set-key (kbd "C-c .") 'ac-complete-gccsense)))
+
+[Flymake](http://flymake.sourceforge.net/)を利用して自動構文チェックを行うこともできます。`Makefile`ではなく`gccrec`を利用するようになっているので、従来より正確でかつ高速です。`gccrec`版Flymakeを有効にするには`M-x gccsense-flymake-setup`を実行します。`~/.emacs`に次のように書いておくと良いでしょう。
+
+    (add-hook 'c-mode-common-hook
+              (lambda ()
+                (flymake-mode)
+                (gccsense-flymake-setup)))
+
+#### Vim ####
+
+利用の前にまず正しくインストールされたか診断を行ってください。`:call GCCSenseDiagnose()`で診断を開始します。エラーが表示されたら、内容に従って問題を修正してください。それでも直らない場合は開発者に連絡してください。
+
+コード補完を行うには`.`や`->`の直後に`^X ^U`します。
+
+![](gccsense-vim.png)
+
+オムニ補完でコードを補完するには`g:gccsenseUseOmniFunc`を`1`に設定します。
+
+    let g:gccsenseUseOmniFunc = 1
+
+これで`^X ^O`や自動補完機能でコード補完を行えるようになります。
+
+制限事項
+--------
+
+* GCC対応言語であるObjective-CやJavaには対応していません
+* GCC 4.4でコンパイルできないコードでは開発援助機能を利用できません
+* ヘッダファイルでは開発援助機能を利用できません
+
+[GCC]: http://gcc.gnu.org/
+[Ruby]: http://www.ruby-lang.org/
+[MacPorts]: http://www.macports.org/
