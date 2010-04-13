@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 
+require 'rubygems'
 require 'optparse'
 require 'pathname'
 require 'shellwords'
@@ -128,7 +129,8 @@ class GCCRec
     end
     if driver
       puts Shellwords.unshellwords([driver, *args]) if @verbose
-      Dir.chdir(workdir) { exec([driver, driver], *args) } unless @dry_run
+      return if @dry_run
+      Dir.chdir(workdir) { exec([driver, driver], *args) }
     end
     die "record not found: #{@input_file}"
   end

@@ -28,11 +28,37 @@
   "GCCSense."
   :group 'completion
   :prefix "gccsense-")
-  
+
+(defcustom gccsense-gccrec-program "gccrec"
+  "Path to gccrec program."
+  :type 'string
+  :group 'gccsense)
+
+(defcustom gccsense-autopch-program "autopch"
+  "Path to autopch program."
+  :type 'string
+  :group 'gccsense)
+
 (defcustom gccsense-use-autopch t
   "Whether or not use autopch program. This may improve performance."
   :type 'boolean
   :group 'gccsense)
+
+(defun gccsense-gccrec-command (filename tempfile &rest rest)
+  (append `(,gccsense-gccrec-program
+            "-r"
+            ,@(if gccsense-use-autopch
+                  (list "-p" gccsense-autopch-program))
+            "-a"
+            ,tempfile
+            ,filename
+            "-fsyntax-only")
+          rest))
+
+(defun gccsense-command-to-string (command)
+  (with-output-to-string
+    (with-current-buffer standard-output
+      (apply 'call-process (car command) nil t nil (cdr command)))))
 
 (defun gccsense-get-temp-name (filename)
   (concat (file-name-directory filename) ".gccsense." (file-name-nondirectory filename)))
@@ -55,16 +81,15 @@
              (column (1+ (current-column))))
         (write-region (point-min) (point-max) tempfile nil 0)
         (unwind-protect
-            (let ((command (format "gccrec -r %s -a %s %s -fsyntax-only -code-completion-at=%s:%s:%s"
-                                   (if gccsense-use-autopch
-                                       "-p autopch"
-                                     "")
-                                   tempfile
-                                   filename
-                                   tempfile line column)))
-              (delq nil (mapcar 'gccsense-parse-completion-string
-                                (split-string (shell-command-to-string command)
-                                              "\n"))))
+            (delq nil
+                  (mapcar 'gccsense-parse-completion-string
+                          (split-string (gccsense-command-to-string
+                                         (gccsense-gccrec-command
+                                          filename
+                                          tempfile
+                                          (format "-code-completion-at=%s:%s:%s"
+                                                  tempfile line column)))
+                                        "\n")))
           (delete-file tempfile))))))
 
 (defun gccsense-complete ()
@@ -103,20 +128,16 @@
 ;;;; Flymake
 
 (defun gccsense-flymake-init ()
-  (let ((temp-file (flymake-init-create-temp-buffer-copy
-                    'flymake-create-temp-inplace)))
-    (list "gccrec" `("-r"
-                     ,@(if gccsense-use-autopch (list "-p" "autopch"))
-                     "-a"
-                     ,temp-file
-                     ,buffer-file-name
-                     "-fsyntax-only"))))
+  (let* ((temp-file (flymake-init-create-temp-buffer-copy
+                     'flymake-create-temp-inplace))
+         (command (gccsense-gccrec-command buffer-file-name temp-file)))
+    (list (car command) (cdr command))))
 
 (defun gccsense-flymake-setup ()
   (interactive)
   (require 'flymake)
   (push '("\\.\\(?:c\\|cc\\|cpp\\|cxx\\|C\\|CC\\)$" gccsense-flymake-init) flymake-allowed-file-name-masks))
-  
+
 
 
 ;;;; Auto Complete Mode

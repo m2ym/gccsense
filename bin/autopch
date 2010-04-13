@@ -97,6 +97,7 @@ class AutoPCH
     @cwd = Dir.getwd
     @tmp_dir = ENV['TMPDIR'] || ENV['TMP'] || ENV['TEMP'] || '/tmp'
     @cache_dir = "#{ENV['HOME']}/.autopch"
+    @args = []
     Dir.mkdir(@cache_dir) unless File.directory? @cache_dir
   end
 
@@ -109,12 +110,10 @@ class AutoPCH
   end
 
   def parse_args(args)
-    @args = args
     return false if args.empty?
 
-    args = args.dup
-
     # parse own args
+    args = args.dup
     OptionParser.new('Usage: autopch [options] [gcc-driver] [gcc-options]') do |opt|
       opt.on('-v', '--verbose')       { @verbose = true }
       opt.on('-x', '--language=LANG') { @lang = v }
@@ -127,6 +126,7 @@ class AutoPCH
     end
 
     # parse gcc args
+    @args = args.dup
     @cc_args = []
     @pch_args = []
     @input_files = []
