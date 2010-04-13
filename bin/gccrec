@@ -58,8 +58,9 @@ class GCCRec
 
   def parse_own_args
     OptionParser.new('Usage: gccrec [options] [gcc-driver] [gcc-options]') do |opt|
-      opt.on('-d', '--db=DBFILE')        {|v| @db_file = v }
-      opt.on('-D', '--dry-run')          { @dry_run = true }
+      opt.on('-d', '--driver=DRIVER')    {|v| @driver = v }
+      opt.on('-D', '--db=DBFILE')        {|v| @db_file = v }
+      opt.on('--dry-run')                { @dry_run = true }
       opt.on('-a', '--alternative=FILE') {|v| @alternative = v }
       opt.on('-p', '--prefix=PREFIX')    {|v| @prefix = v }
       opt.on('-r', '--replay')           { @replay = true }
@@ -69,7 +70,7 @@ class GCCRec
       if @replay
         @input_file = @args.shift
         die_with_help(opt, 'input file not given') unless @input_file
-      else
+      elsif !@driver
         @driver = @args.shift
         die_with_help(opt, 'driver not given') unless @driver
       end
@@ -107,16 +108,10 @@ class GCCRec
     end
   end
 
- def compile
-   args = @comp_args
-   puts Shellwords.unshellwords([@driver, *args]) if @verbose
-   exec([@driver, @driver], *args) unless @dry_run
-  end
-
   def replay
     file = Pathname.new(@input_file).realpath.to_s rescue die("no such file: #{@input_file}")
     
-    driver, args, workdir = []
+    driver, args, workdir = @driver, @comp_args + [@alternative || file], '.'
     open_db do |db|
       db.lookup(file) do |file, _driver, _args, _workdir|
         if @prefix
@@ -124,7 +119,7 @@ class GCCRec
           _driver = @prefix
         end
         driver, workdir = _driver, _workdir
-        args = _args + @comp_args + [@alternative || file]
+        args = _args + args
       end
     end
     if driver
@@ -133,6 +128,12 @@ class GCCRec
       Dir.chdir(workdir) { exec([driver, driver], *args) }
     end
     die "record not found: #{@input_file}"
+  end
+
+  def compile
+    args = @comp_args
+    puts Shellwords.unshellwords([@driver, *args]) if @verbose
+    exec([@driver, @driver], *args) unless @dry_run
   end
 
   def open_db

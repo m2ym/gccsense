@@ -110,8 +110,6 @@ class AutoPCH
   end
 
   def parse_args(args)
-    return false if args.empty?
-
     # parse own args
     args = args.dup
     OptionParser.new('Usage: autopch [options] [gcc-driver] [gcc-options]') do |opt|

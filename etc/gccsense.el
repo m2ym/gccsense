@@ -39,6 +39,16 @@
   :type 'string
   :group 'gccsense)
 
+(defcustom gccsense-c-driver "gcc-code-assist"
+  "Path to C compiler driver."
+  :type 'string
+  :group 'gccsense)
+
+(defcustom gccsense-c++-driver "g++-code-assist"
+  "Path to C++ compiler driver."
+  :type 'string
+  :group 'gccsense)
+
 (defcustom gccsense-use-autopch t
   "Whether or not use autopch program. This may improve performance."
   :type 'boolean
@@ -49,6 +59,10 @@
             "-r"
             ,@(if gccsense-use-autopch
                   (list "-p" gccsense-autopch-program))
+            "-d"
+            ,(if (string-match "\(?:cpp\|cc\|cxx\|CPP\|CC\|CXX\)" filename)
+                 gccsense-c++-driver
+               gccsense-c-driver)
             "-a"
             ,tempfile
             ,filename
@@ -157,6 +171,73 @@
     (requires . 0)
     (symbol . "M")
     (cache)))
+
+(defun ac-complete-gccsense ()
+  (interactive)
+  (auto-complete '(ac-source-gccsense-member ac-source-gccsense-static-member)))
+
+
+
+;;;; Diagnose
+
+(defun gccsense-diagnose-error (msg)
+  (switch-to-buffer "*GCCSense-Diagnose*")
+  (erase-buffer)
+  (save-excursion
+    (insert msg))
+  (error "Failed"))
+
+(defmacro gccsense-diagnose-checklist (&rest form)
+  `(condition-case nil
+       (progn
+         ,@(mapcar (lambda (pair)
+                     (setq pair (macroexpand pair))
+                     `(unless
+                          (condition-case nil
+                              (progn
+                                ,(car pair))
+                            (error))
+                       (gccsense-diagnose-error ,(cadr pair))))
+                   form)
+         (message "Everything OK!"))
+     (error)))
+
+(defmacro gccsense-diagnose-check-program (path)
+  `((eq (call-process ,path nil nil nil "--version") 0)
+    ,(format "`%s' is not executable from Emacs or returned error.
+Make sure that the program was correctly installed and can be run from terminal.
+You may add a directory where the program was installed into `exec-path' variable."
+             path)))
+
+(defun gccsense-diagnose ()
+  (interactive)
+  (gccsense-diagnose-checklist
+   (gccsense-diagnose-check-program gccsense-gccrec-program)
+   (gccsense-diagnose-check-program gccsense-autopch-program)
+   (gccsense-diagnose-check-program gccsense-c-driver)
+   (gccsense-diagnose-check-program gccsense-c++-driver)
+
+   ((and (not (string-match "unrecognized option" (gccsense-command-to-string (list gccsense-c-driver "-code-completion-at=x"))))
+         (not (string-match "unrecognized option" (gccsense-command-to-string (list gccsense-c++-driver "-code-completion-at=x")))))
+    "GCC driver can not take `-code-completion-at' option. Make sure that gcc-code-assist and g++-code-assist
+was installed correctly and `gccsense-c-driver' and `gccsense-c++-driver' points to that programs.")
+
+   ((progn
+      (save-window-excursion
+        (save-excursion
+          (find-file-literally "/tmp/test-gccsense-diagnose.cpp")
+          (erase-buffer)
+          (insert "#include <string>
+int main() {
+std::string s;
+s.
+}")
+          (save-buffer)
+          (goto-line 4)
+          (move-to-column 2)
+          (assoc "c_str" (gccsense-get-completions)))))
+    "Can not obtain completions for std::string.
+You may not use code-completion.")))
 
 (provide 'gccsense)
 ;;; gccsense.el ends here

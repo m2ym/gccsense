@@ -1,5 +1,5 @@
 if exists('g:loaded_gccsense')
-"    finish
+    finish
 endif
 let g:loaded_gccsense = 1
 
@@ -9,6 +9,14 @@ endif
 
 if !exists('g:gccsenseAutoPCHProgram')
     let g:gccsenseAutoPCHProgram = 'autopch'
+endif
+
+if !exists('g:gccsenseCDriver')
+    let g:gccsenseCDriver = 'gcc-code-assist'
+endif
+
+if !exists('g:gccsenseCPPDriver')
+    let g:gccsenseCPPDriver = 'g++-code-assist'
 endif
 
 if !exists('g:gccsenseUseAutoPCH')
@@ -42,9 +50,14 @@ function! GCCSenseComplete(findstart, base)
         if g:gccsenseUseAutoPCH
             let autopch = '-a ' . shellescape(g:gccsenseAutoPCHProgram)
         endif
-        let command = printf('%s -r %s -a "%s" "%s" -fsyntax-only "-code-completion-at=%s:%s:%s"',
+        let driver = g:gccsenseCDriver
+        if match(expand('%:e'), '\(cpp\|cc\|cxx\|CPP\|CC\|CXX\)') >= 0
+            let driver = g:gccsenseCPPDriver
+        endif
+        let command = printf('%s -r %s -d %s -a "%s" "%s" -fsyntax-only "-code-completion-at=%s:%s:%s"',
                              \ gccrec,
                              \ autopch,
+                             \ driver,
                              \ tempfile,
                              \ filename,
                              \ tempfile,
@@ -68,6 +81,27 @@ function! SetupGCCSense()
     else
         setlocal completefunc=GCCSenseComplete
     endif
+endfunction
+
+function! s:GCCSenseDiagnoseProgram(program, args, should_match, msg)
+    let success = 0
+    if s:system(shellescape(a:program) . ' ' . a:args) =~ a:should_match
+        let success = 1
+    endif
+    if !success
+        echo 'Error: ' . printf(a:msg, a:program)
+    end
+endfunction
+
+function! GCCSenseDiagnose()
+    call s:GCCSenseDiagnoseProgram(g:gccsenseGCCRecProgram, '--version', '.', "`%s' is not executable from Vim or return error. Please make sure that the program was installed correctly.")
+    call s:GCCSenseDiagnoseProgram(g:gccsenseAutoPCHProgram, '--version', '.', "`%s' is not executable from Vim or return error. Please make sure that the program was installed correctly.")
+    call s:GCCSenseDiagnoseProgram(g:gccsenseCDriver, '--version', '.', "`%s' is not executable from Vim or return error. Please make sure that the program was installed correctly.")
+    call s:GCCSenseDiagnoseProgram(g:gccsenseCPPDriver, '--version', '.', "`%s' is not executable from Vim or return error. Please make sure that the program was installed correctly.")
+    call s:GCCSenseDiagnoseProgram(g:gccsenseCDriver, '-code-completion-at=x', 'no input file', "`%s' can not take `-code-completion-at' option. Make sure that gcc-code-assist was installed correctly and g:gccsenseCDriver points to that programs.")
+    call s:GCCSenseDiagnoseProgram(g:gccsenseCPPDriver, '-code-completion-at=x', 'no input file', "`%s' can not take `-code-completion-at' option. Make sure that g++-code-assist was installed correctly and g:gccsenseCPPDriver points to that programs.")
+
+    echo "Finish!"
 endfunction
 
 autocmd FileType c call SetupGCCSense()
