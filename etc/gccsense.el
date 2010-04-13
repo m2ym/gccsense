@@ -207,7 +207,7 @@
     ,(format "`%s' is not executable from Emacs or returned error.
 Make sure that the program was correctly installed and can be run from terminal.
 You may add a directory where the program was installed into `exec-path' variable."
-             path)))
+             (symbol-value path))))
 
 (defun gccsense-diagnose ()
   (interactive)

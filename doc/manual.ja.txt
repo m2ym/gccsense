@@ -98,11 +98,11 @@ gcc-code-assistをビルドしてインストールします。
 
 ### GCCSenseのインストール ###
 
-GCCSenseは[Ruby][] 1.8およびSQLite3バインディングを必要とします。Debian系システムなら次のようにインストールできます。
+GCCSenseは[Ruby][] 1.8および[RubyGems][]、[SQLite][]3バインディングを必要とします。Debian系システムなら次のようにインストールできます。
 
-    # apt-get install ruby libsqlite3-ruby
+    # apt-get install ruby rubygems libsqlite3-ruby
 
-Mac OS XではデフォルトでRubyがインストールされていますが、RubyGemsやSQLite3バインディングは別途インストールする必要があります。RubyGemsは[MacPorts][]から次のようにインストールできます。
+Mac OS XではデフォルトでRubyがインストールされていますが、[RubyGems][]や[SQLite][]3バインディングは別途インストールする必要があります。RubyGemsは[MacPorts][]から次のようにインストールできます。
 
     $ sudo port install rb-rubygems
 
@@ -330,7 +330,7 @@ GCCSenseではコード補完などのレスポンス性能を改善するため
 
 利用の前にまず正しくインストールされたか診断を行ってください。`M-x gccsense-diagnose`で診断を開始します。問題がなければミニバッファに`Everything OK!`と表示されます。エラーが表示されたら、内容に従って問題を修正してください。それでも直らない場合は開発者に連絡してください。
 
-コード補完を行うには`.`や`->`の直後に`M-x gccsense-complete`します。
+コード補完を行うには`.`や`->`の直後に`M-x gccsense-complete`します。なお編集中のファイルが存在しない場合、つまり**一度も保存されていないバッファではコード補完できない**ので注意してください。
 
 ![](gccsense-emacs-1.png)
 
@@ -357,7 +357,7 @@ GCCSenseではコード補完などのレスポンス性能を改善するため
 
 利用の前にまず正しくインストールされたか診断を行ってください。`:call GCCSenseDiagnose()`で診断を開始します。エラーが表示されたら、内容に従って問題を修正してください。それでも直らない場合は開発者に連絡してください。
 
-コード補完を行うには`.`や`->`の直後に`^X ^U`します。
+コード補完を行うには`.`や`->`の直後に`^X ^U`します。なお編集中のファイルが存在しない場合、つまり**一度も保存されていないバッファではコード補完できない**ので注意してください。
 
 ![](gccsense-vim.png)
 
@@ -377,3 +377,5 @@ GCCSenseではコード補完などのレスポンス性能を改善するため
 [GCC]: http://gcc.gnu.org/
 [Ruby]: http://www.ruby-lang.org/
 [MacPorts]: http://www.macports.org/
+[SQLite]: http://www.sqlite.org/
+[RubyGems]: http://rubyforge.org/projects/rubygems/
