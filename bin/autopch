@@ -1,12 +1,25 @@
 #!/usr/bin/env ruby
+# autopch - Apply precompiled headers automatically
+# Copyright (C) 2010  Tomohiro Matsuyama <tomo@cx4a.org>
+# 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 require 'optparse'
 require 'pathname'
 require 'stringio'
 require 'digest/md5'
 require 'fileutils'
-
-Version = '0.1'
 
 class Shellwords
   def self.unshellwords(array)
@@ -15,6 +28,8 @@ class Shellwords
 end
 
 class AutoPCH
+  VERSION = '0.1'
+
   class PPDirectiveReader
     DIRECTIVE_REGEXP = /^\s*#/
 
@@ -113,6 +128,7 @@ class AutoPCH
     # parse own args
     args = args.dup
     OptionParser.new('Usage: autopch [options] [gcc-driver] [gcc-options]') do |opt|
+      opt.version = VERSION
       opt.on('-v', '--verbose')       { @verbose = true }
       opt.on('-x', '--language=LANG') { @lang = v }
       opt.order! args

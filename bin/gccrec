@@ -1,4 +1,19 @@
 #!/usr/bin/env ruby
+# gccrec - Record and replay GCC command
+# Copyright (C) 2010  Tomohiro Matsuyama <tomo@cx4a.org>
+# 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 require 'rubygems'
 require 'optparse'
@@ -7,13 +22,13 @@ require 'shellwords'
 require 'stringio'
 require 'sqlite3'
 
-Version = '0.1'
-
 def Shellwords.unshellwords(array)
   array.map {|elt| elt.index(/\s/) ? "\"#{elt.gsub(/([\"$])/, '\\1')}\"" : elt}.join(' ')
 end
 
 class GCCRec
+  VERSION = '0.1'
+
   DB_NAME = '.gccrec'
   GCC_ONE_ARG_REGEXP = /^-(?:o|I|idirafter|imacros|include|iprefix|isystem|iwithprefix|iwithprefixbefore|L|D|U|x|MF|MT|MQ|aux-info|-param|A|Xlinker|u)(.*)$/
 
@@ -58,6 +73,7 @@ class GCCRec
 
   def parse_own_args
     OptionParser.new('Usage: gccrec [options] [gcc-driver] [gcc-options]') do |opt|
+      opt.version = VERSION
       opt.on('-d', '--driver=DRIVER')    {|v| @driver = v }
       opt.on('-D', '--db=DBFILE')        {|v| @db_file = v }
       opt.on('--dry-run')                { @dry_run = true }
