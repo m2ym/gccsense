@@ -41,23 +41,57 @@ GCCSenseは[GCC][]のコード解析器を利用したC/C++のための最も賢
 
 **GCCをビルドできるUNIX系システムが必須**になります。現状Windows対応を行っていませんが、MinGWと組み合せれば動作するはずなので、将来的には対応する予定です。
 
+### 準備 ###
+
+GCCSenseの動作およびGCCのビルドに必要なパッケージをインストールしておきます。
+
+#### Debian系システム #### {#pre_debian-system}
+
+    $ sudo apt-get install build-essential libgmp3-dev libmpfr-dev flex ruby rubygems libsqlite3-ruby
+
+#### FreeBSD系システム #### {#pre_freebsd-system}
+
+次のportsパッケージをインストールしておく必要があります。
+
+* textproc/flex
+* lang/ruby18
+* devel/ruby-gems
+* databases/sqlite3
+* databases/rubygem-sqlite3
+* math/libgmp4
+* math/mpfr
+* devel/gmake
+
+次のようにインストールしてください。
+
+    # foreach p ( textproc/flex lang/ruby18 devel/ruby-gems databses/sqlite3 databases/rubygem-sqlite3 math/libgmp4 math/mpfr devel/gmake )
+    cd /usr/ports/$p
+    make install
+    end
+
+#### Mac OS X #### {#pre_macosx}
+
+[MacPorts][]をインストールしておく必要があります。
+
+    $ sudo port install gmp mpfr flex rb-rubygems
+    $ sudo gem install sqlite3-ruby
+
 ### gcc-code-assistのインストール ###
 
 gcc-code-assistはコード補完などの機能を搭載した独自のGCCです。基本的には[GCCのインストール手順](http://gcc.gnu.org/install/)に従いますが、ここではいくつかのプラットフォームに限って簡単に説明します。
 
-手順の中で一番重要なのはインストール先とプログラムサフィックスです。インストール先は特に指定しない場合は`/usr/local`になりますが、一般ユーザーでインストールする場合は`configure`スクリプトに`--prefix=$HOME`などを設定する必要があります。
+手順の中で一番重要なのはインストール先とプログラムサフィックスです。インストール先は特に指定しない場合は`/usr/local`になりますが、一般ユーザーでインストールする場合は`configure`スクリプトに`--prefix=$HOME`などを設定します。その場合は`$HOME/bin`を`PATH`環境変数に設定する必要があります。
 
 プログラムサフィックスは必須とまでは言えませんが、既存のGCCと独自のGCCが干渉しないようプログラム名を一意にしたほうが良いでしょう。GCCSenseではプログラムサフィックスとして`-code-assist`を推奨しています。これにより`gcc`は`gcc-code-assist`になり、`g++`は`g++-code-assist`になります。プログラムサフィックスを指定するには`configure`スクリプトに`--program-suffix=-code-assist`のように指定します。
 
 最近のマシンなら30分ぐらいでビルドできます。
 
+インストール後は`gcc-code-assist`と`g++-code-assist`が動作することを確認してください。
+
+    $ gcc-code-assist --version
+    $ g++-code-assist --version
+
 #### Debian系システム ####
-
-GCCのビルドに必要なパッケージをインストールしておきます。
-
-    $ sudo apt-get install build-essential libgmp3-dev libmpfr-dev flex
-
-gcc-code-assistをビルドしてインストールします。
 
     $ tar xvjf gcc-code-assist-*.tar.bz2
     $ cd gcc-code-assist-*
@@ -65,22 +99,15 @@ gcc-code-assistをビルドしてインストールします。
     $ make # -j2
     $ sudo make install
 
-`--prefix=$HOME`を指定した場合は、`$HOME/bin`を`PATH`環境変数に設定しておく必要があります。
+#### FreeBSD系システム ####
 
-最後に`gcc-code-assist`と`g++-code-assist`が動作することを確認してください。
-
-    $ gcc-code-assist --version
-    $ g++-code-assist --version
+    # tar xvjf gcc-code-assist-*.tar.bz2
+    # cd gcc-code-assist-*
+    # ./configure --program-suffix=-code-assist --enable-languages=c,c++ --disable-bootstrap --disable-multilib
+    # gmake # -j2
+    # gmake install
 
 #### Mac OS X ####
-
-[MacPorts][]をインストールしておく必要があります。
-
-GCCのビルドに必要なパッケージをインストールします。
-
-    $ sudo port install gmp mpfr flex
-
-gcc-code-assistをビルドしてインストールします。
 
     $ tar xvjf gcc-code-assist-*.tar.bz2
     $ cd gcc-code-assist-*
@@ -88,26 +115,9 @@ gcc-code-assistをビルドしてインストールします。
     $ make # -j2
     $ sudo make install
 
-最後に`gcc-code-assist`と`g++-code-assist`が動作することを確認してください。
-
-    $ gcc-code-assist --version
-    $ g++-code-assist --version
-
 ### GCCSenseのインストール ###
 
-GCCSenseは[Ruby][] 1.8および[RubyGems][]、[SQLite][]3バインディングを必要とします。Debian系システムなら次のようにインストールできます。
-
-    # apt-get install ruby rubygems libsqlite3-ruby
-
-Mac OS XではデフォルトでRubyがインストールされていますが、[RubyGems][]や[SQLite][]3バインディングは別途インストールする必要があります。RubyGemsは[MacPorts][]から次のようにインストールできます。
-
-    $ sudo port install rb-rubygems
-
-続いて`gem`を使ってSQLite3バインディングをインストールします。
-
-    $ sudo gem install sqlite3-ruby
-
-GCCSense自体のインストールは単純で、`bin`ディレクトリを`PATH`環境変数に設定するか、`bin`ディレクトリ直下のプログラムを`PATH`環境変数に設定されたディレクトリにコピーするだけです。通常は後者のほうが楽でしょう。この作業は必須ではありませんが、この作業を行わなければエディタの設定が必要になります。
+GCCSenseのインストールは単純で、`bin`ディレクトリを`PATH`環境変数に設定するか、`bin`ディレクトリ直下のプログラムを`PATH`環境変数に設定されたディレクトリにコピーするだけです。通常は後者のほうが楽でしょう。この作業は必須ではありませんが、これを行わなければエディタの設定が必要になります。
 
     $ cd gccsense-*
     $ sudo cp bin/* /usr/local/bin/

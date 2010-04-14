@@ -41,23 +41,59 @@ Before installation, please download a proper version of GCCSense and gcc-code-a
 
 **UNIX-like system that can build GCC is required**. Currently Windows is not supported, but in the future, it will be supported by combining with MinGW.
 
+### Pre-Installation ###
+
+Install required packages that is needed for GCCSense and for building GCC.
+
+#### Debian Systems #### {#pre_debian-system}
+
+    $ sudo apt-get install build-essential libgmp3-dev libmpfr-dev flex ruby rubygems libsqlite3-ruby
+
+#### FreeBSD Systems #### {#pre_freebsd-system}
+
+Install the following ports packages.
+
+* textproc/flex
+* lang/ruby18
+* devel/ruby-gems
+* databases/sqlite3
+* databases/rubygem-sqlite3
+* math/libgmp4
+* math/mpfr
+* devel/gmake
+
+Install like:
+
+    # foreach p ( textproc/flex lang/ruby18 devel/ruby-gems databses/sqlite3 databases/rubygem-sqlite3 math/libgmp4 math/mpfr devel/gmake )
+    cd /usr/ports/$p
+    make install
+    end
+
+#### Mac OS X #### {#pre_macosx}
+
+Install [MacPorts][] first.
+
+After install MacPorts, install required packages using `port` like:
+
+    $ sudo port install gmp mpfr flex rb-rubygems
+    $ sudo gem install sqlite3-ruby
+
 ### Install gcc-code-assist ###
 
 gcc-code-assist is a custom GCC that has functions such as code completion. Basically follow [GCC build instructions](http://gcc.gnu.org/install/). Explain for specific platforms here.
 
-The most important instructions is install directory and program suffix. Without specifying install directory, it would be `/usr/local`. If you install in normal user, you need to specify `--prefix=$HOME` to `configure` script.
+The most important instructions is install directory and program suffix. Without specifying install directory, it would be `/usr/local`. If you install in normal user, you need to specify `--prefix=$HOME` to `configure` script and add `$HOME/bin` to `PATH` environment variable.
 
 Program suffix is not actually required, but it should be because a name of existed GCC would may conflict to the custom GCC. GCCSense recommends to use `-code-assist` as program suffix. By this, `gcc` turns to `gcc-code-assist` and `g++` turns to `g++-code-assist`. To specify program suffix, give `--program-suffix=-code-assist` to `configure` script.
 
 The build will be finished in 30 minutes in recent PC.
 
-#### Debian systems ####
+After installation, make sure that `gcc-code-assist` and `g++-code-assist` can run.
 
-Install required package for building GCC.
+    $ gcc-code-assist --version
+    $ g++-code-assist --version
 
-    $ sudo apt-get install build-essential libgmp3-dev libmpfr-dev flex
-
-Build and install gcc-code-assist
+#### Debian Systems ####
 
     $ tar xvjf gcc-code-assist-*.tar.bz2
     $ cd gcc-code-assist-*
@@ -65,22 +101,15 @@ Build and install gcc-code-assist
     $ make # -j2
     $ sudo make install
 
-You need to set `PATH` environment variable if you specify `--prefix=$HOME`.
+#### FreeBSD Systems ####
 
-Finally, make sure that `gcc-code-assist` and `g++-code-assist` can run.
-
-    $ gcc-code-assist --version
-    $ g++-code-assist --version
+    # tar xvjf gcc-code-assist-*.tar.bz2
+    # cd gcc-code-assist-*
+    # ./configure --program-suffix=-code-assist --enable-languages=c,c++ --disable-bootstrap --disable-multilib
+    # gmake # -j2
+    # gmake install
 
 #### Mac OS X ####
-
-Install [MacPorts][] first.
-
-Install required package for building GCC.
-
-    $ sudo port install gmp mpfr flex
-
-Build and install gcc-code-assist.
 
     $ tar xvjf gcc-code-assist-*.tar.bz2
     $ cd gcc-code-assist-*
@@ -88,26 +117,9 @@ Build and install gcc-code-assist.
     $ make # -j2
     $ sudo make install
 
-Finally, make sure that `gcc-code-assist` and `g++-code-assist` can run.
-
-    $ gcc-code-assist --version
-    $ g++-code-assist --version
-    
 ### Install GCCSense ###
 
-GCCSense requires [Ruby][] 1.8, [RubyGems][], and [SQLite][]3 binding. In debian systems, you can install like:
-
-    # apt-get install ruby rubygems libsqlite3-ruby
-
-In Mac OS X, Ruby is installed by default, you need to install [RubyGems][] and [SQLite][]3 binding anyway. RubyGems can be installed with [MacPorts][] like:
-
-    $ sudo port install rb-rubygems
-
-Next install SQLite3 binding with `gem` like:
-
-    $ sudo gem install sqlite3-ruby
-
-It is easy to install GCCSense itself. Just add `bin` directory to `PATH` environment variable, or copy programs under `bin` directory to directoryes that are included in `PATH` environment variables. Generally you choose latter. This is not required, but setting for edits will be need anyway if you don't do it here.
+It is easy to install GCCSense. Just add `bin` directory to `PATH` environment variable, or copy programs under `bin` directory to directoryes that are included in `PATH` environment variables. Generally you choose latter. This is not required, but setting for edits will be need anyway if you don't do it here.
 
     $ cd gccsense-*
     $ sudo cp bin/* /usr/local/bin/
