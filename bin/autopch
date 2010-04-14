@@ -6,7 +6,7 @@ require 'stringio'
 require 'digest/md5'
 require 'fileutils'
 
-Version = '0.0.1'
+Version = '0.1'
 
 class Shellwords
   def self.unshellwords(array)

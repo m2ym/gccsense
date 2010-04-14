@@ -1,0 +1,13 @@
+#!/bin/sh
+
+error() {
+    echo "$1" >& 2
+    exit 1
+}
+
+set $(grep Version $(dirname $0)/../bin/* | cut -d\' -f2 | sort -u)
+case $# in
+    0) error 'No version number found' ;;
+    1) echo $1 ;;
+    *) error "Unmatched version number:\n$*" ;;
+esac

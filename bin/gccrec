@@ -7,7 +7,7 @@ require 'shellwords'
 require 'stringio'
 require 'sqlite3'
 
-Version = '0.0.1'
+Version = '0.1'
 
 def Shellwords.unshellwords(array)
   array.map {|elt| elt.index(/\s/) ? "\"#{elt.gsub(/([\"$])/, '\\1')}\"" : elt}.join(' ')
