@@ -5,22 +5,22 @@ CSS: style.css
 GCCSense ユーザーマニュアル
 ===========================
 
-[Index](index.txt)
+[Index](index.ja.txt)
 
 \[[English](manual.txt)]
 
-* * *
+* * * *
 
 {toc}
 
-* * *
+* * * *
 
 はじめに
 --------
 
 ### GCCSenseとは？ ###
 
-GCCSenseは[GCC][]のコード解析器を利用した開発援助ツールです。コンパイラの情報を利用するため非常に高精度なコード補完などが可能になります。独立したプログラムとして動作するので理論的にはどのエディタからも利用することができます。
+GCCSenseは[GCC][]のコード解析器を利用したC/C++のための最も賢い開発援助ツールです。コンパイラの情報を利用するため非常に高精度なコード補完などが可能になります。独立したプログラムとして動作するので理論的にはどのエディタからも利用することができます。
 
 ### 特徴 ###
 
@@ -36,6 +36,10 @@ GCCSenseは[GCC][]のコード解析器を利用した開発援助ツールで�
 ------------
 
 インストールの前に上記のダウンロードページから適切なバージョンのGCCSenseとgcc-code-assistをダウンロードしておいてください。
+
+### 必要事項 ###
+
+**GCCをビルドできるUNIX系システムが必須**になります。現状Windows対応を行っていませんが、MinGWと組み合せれば動作するはずなので、将来的には対応する予定です。
 
 ### gcc-code-assistのインストール ###
 
@@ -66,15 +70,7 @@ gcc-code-assistをビルドしてインストールします。
 最後に`gcc-code-assist`と`g++-code-assist`が動作することを確認してください。
 
     $ gcc-code-assist --version
-    gcc-code-assist (GCC) 4.4.4 20100320 (prerelease)
-    Copyright (C) 2010 Free Software Foundation, Inc.
-    This is free software; see the source for copying conditions.  There is NO
-    warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
     $ g++-code-assist --version
-    g++-code-assist (GCC) 4.4.4 20100320 (prerelease)
-    Copyright (C) 2010 Free Software Foundation, Inc.
-    This is free software; see the source for copying conditions.  There is NO
-    warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 #### Mac OS X ####
 
@@ -94,7 +90,8 @@ gcc-code-assistをビルドしてインストールします。
 
 最後に`gcc-code-assist`と`g++-code-assist`が動作することを確認してください。
 
-    TODO
+    $ gcc-code-assist --version
+    $ g++-code-assist --version
 
 ### GCCSenseのインストール ###
 
@@ -266,7 +263,7 @@ gcc-code-assistはコード補完などの機能を搭載した独自のGCCで�
 
 `autopch`はGCCの解析速度を向上させるためのGCCラッパーです。自動的にプリコンパイルヘッダを適用するのでこのような名前になっています（AUTOmatic PreCompiled Header）。インクルードするヘッダファイルが巨大な場合などに顕著ですが、プリコンパイルヘッダを利用することでコンパイル速度をかなり改善することができます。コード補完などのレスポンス性能が求められる領域では、特にこの速度改善は重要です。
 
-しかしGCCのプリコンパイルヘッダには「Translation unitにつき一つのプリコンパイルヘッダしかインクルードできない」という重要な制限があります。プリコンパイルヘッダの特性上、これは仕方がないのですが、通常は次のように二個以上のヘッダをインクルードしているでしょう。
+しかしGCCのプリコンパイルヘッダには「Translation unitにつき一つのプリコンパイルヘッダしかインクルードできない」という重大な制限があります。プリコンパイルヘッダの特性上、これは仕方がないのですが、通常は次のように二個以上のヘッダをインクルードしているでしょう。
 
 test.cpp:
 
@@ -373,6 +370,19 @@ GCCSenseではコード補完などのレスポンス性能を改善するため
 * GCC対応言語であるObjective-CやJavaには対応していません
 * GCC 4.4でコンパイルできないコードでは開発援助機能を利用できません
 * ヘッダファイルでは開発援助機能を利用できません
+
+トラブルシューティング
+----------------------
+
+### コード補完できない ###
+
+診断を行ってください。Emacsなら`M-x gccsense-diagnose`、Vimなら`:call GCCSenseDiagnose()`です。問題なければ、コード補完を行っているファイルのコンパイラオプションを`gccrec`で正しく記録しているか確認してください。
+
+    $ gccrec -v -r a_problem_file.cpp
+
+`record not found`と出力される場合は`gccrec`での記録を行っていないことを意味します。[`gccrec`](#)を参照しながら正しく記録を行ってください。
+
+それでもコード補完できない場合は開発者に連絡してください。
 
 [GCC]: http://gcc.gnu.org/
 [Ruby]: http://www.ruby-lang.org/

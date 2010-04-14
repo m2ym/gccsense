@@ -1,0 +1,389 @@
+Title: GCCSense - User Manual
+Numbering: yes
+CSS: style.css
+
+GCCSense User Manual
+====================
+
+[Index](index.txt)
+
+\[[Japanese](manual.ja.txt)]
+
+* * * *
+
+{toc}
+
+* * * *
+
+Introduction
+------------
+
+### What is GCCSense ? ###
+
+GCCSense is the most intelligent development tools for C/C++ using [GCC][]'s code analyzers. Using internal compiler information, it is capable to provide a high precise code completion functions. GCCSense is a standalone program, so any editors can use it.
+
+### Features ###
+
+* High precise code completion
+* Automatic syntax check
+
+Downloads
+---------
+
+You can download from [GCCSense top page](index.txt).
+
+Installation
+------------
+
+Before installation, please download a proper version of GCCSense and gcc-code-assist from the above download page.
+
+### Requirements ###
+
+**UNIX-like system that can build GCC is required**. Currently Windows is not supported, but in the future, it will be supported by combining with MinGW.
+
+### Install gcc-code-assist ###
+
+gcc-code-assist is a custom GCC that has functions such as code completion. Basically follow [GCC build instructions](http://gcc.gnu.org/install/). Explain for specific platforms here.
+
+The most important instructions is install directory and program suffix. Without specifying install directory, it would be `/usr/local`. If you install in normal user, you need to specify `--prefix=$HOME` to `configure` script.
+
+Program suffix is not actually required, but it should be because a name of existed GCC would may conflict to the custom GCC. GCCSense recommends to use `-code-assist` as program suffix. By this, `gcc` turns to `gcc-code-assist` and `g++` turns to `g++-code-assist`. To specify program suffix, give `--program-suffix=-code-assist` to `configure` script.
+
+The build will be finished in 30 minutes in recent PC.
+
+#### Debian systems ####
+
+Install required package for building GCC.
+
+    $ sudo apt-get install build-essential libgmp3-dev libmpfr-dev flex
+
+Build and install gcc-code-assist
+
+    $ tar xvjf gcc-code-assist-*.tar.bz2
+    $ cd gcc-code-assist-*
+    $ ./configure --program-suffix=-code-assist --enable-languages=c,c++ --disable-bootstrap --disable-multilib
+    $ make # -j2
+    $ sudo make install
+
+You need to set `PATH` environment variable if you specify `--prefix=$HOME`.
+
+Finally, make sure that `gcc-code-assist` and `g++-code-assist` can run.
+
+    $ gcc-code-assist --version
+    $ g++-code-assist --version
+
+#### Mac OS X ####
+
+Install [MacPorts][] first.
+
+Install required package for building GCC.
+
+    $ sudo port install gmp mpfr flex
+
+Build and install gcc-code-assist.
+
+    $ tar xvjf gcc-code-assist-*.tar.bz2
+    $ cd gcc-code-assist-*
+    $ ./configure --program-suffix=-code-assist --enable-languages=c,c++ --disable-bootstrap --disable-multilib --disable-nls --with-gmp-include=/opt/local/include --with-gmp-lib=/opt/local/lib --with-mpfr-include=/opt/local/include --with-mpfr-lib=/opt/local/lib --with-libiconv-prefix=/usr
+    $ make # -j2
+    $ sudo make install
+
+Finally, make sure that `gcc-code-assist` and `g++-code-assist` can run.
+
+    $ gcc-code-assist --version
+    $ g++-code-assist --version
+    
+### Install GCCSense ###
+
+GCCSense requires [Ruby][] 1.8, [RubyGems][], and [SQLite][]3 binding. In debian systems, you can install like:
+
+    # apt-get install ruby rubygems libsqlite3-ruby
+
+In Mac OS X, Ruby is installed by default, you need to install [RubyGems][] and [SQLite][]3 binding anyway. RubyGems can be installed with [MacPorts][] like:
+
+    $ sudo port install rb-rubygems
+
+Next install SQLite3 binding with `gem` like:
+
+    $ sudo gem install sqlite3-ruby
+
+It is easy to install GCCSense itself. Just add `bin` directory to `PATH` environment variable, or copy programs under `bin` directory to directoryes that are included in `PATH` environment variables. Generally you choose latter. This is not required, but setting for edits will be need anyway if you don't do it here.
+
+    $ cd gccsense-*
+    $ sudo cp bin/* /usr/local/bin/
+
+We assume here that `/usr/local/bin` is included in `PATH` environment varialbe. It is also OK `/usr/bin` if you don't mind.
+
+Finally, make sure that `gccrec` and `autopch` can run.
+
+    $ gccrec --version
+    gccrec 0.0.1
+    $ autopch --version
+    autopch 0.0.1
+
+### Install Emacs Extension ###
+
+An Emacs extension is found at `etc/gccsense.el`. Just copy to directories that is included in `load-path` variable.
+
+    $ cp etc/gccsense.el ~/.emacs.d/
+
+Write the following code into `~/.emacs`.
+
+    (require 'gccsense)
+
+### Install Vim Plugin ###
+
+A Vim plugin is found at `etc/gccsense.vim`. Just copy to `~/.vim/plugin`, nothing is neede without copying.
+
+    $ cp etc/gccsense.vim ~/.vim/plugin
+
+Usage
+-----
+
+GCCSense is made of the following four pats. Sections you should read are emphasised.
+
+* [gcc-code-assist](#)
+
+  A custom GCC that has functions such as code completion
+
+* **[`gccrec`](#)**
+
+  A GCC wrapper for recording and replaying GCC command
+
+* [`autopch`](#)
+
+  A GCC wrapper for enabling precompiled header automatically
+
+* **[Editros](#)**
+
+  Editos such like Emacs and Vim
+
+### gcc-code-assist ###
+
+gcc-code-assist is A custom GCC that has functions such as code completion. It is based on GCC 4.4 and has compatibilities. Functions currently available are following.
+
+#### Code Completion ####
+
+Specifying a completion postion with `-code-completion-at` option, gcc-code-assist outputs completion candidates for the position. Option will take a value of forma of `<file>:<line>:<column>`. `<file>` and a file name given to compiler have to be matched. `<line>` and `<column>` are 1 based. Consider an example.
+
+    $ nl test.cpp
+         1  #include <string>
+         2  int main()
+         3  {
+         4      std::string s;
+         5      s.
+         6  }
+    $ # Outputs candidates starting with c at line 5 column 7 of test.cpp
+    $ g++-code-assist -fsyntax-only -code-completion-at=test.cpp:5:7 test.cpp 2> /dev/null | grep '^completion: c'
+    completion: capacity "typename _Alloc::rebind<_CharT>::other::size_type std::basic_string<_CharT, _Traits, _Alloc>::capacity() const [with _CharT = char, _Traits = std::char_traits<char>, _Alloc = std::allocator<char>]"
+    completion: clear "void std::basic_string<_CharT, _Traits, _Alloc>::clear() [with _CharT = char, _Traits = std::char_traits<char>, _Alloc = std::allocator<char>]"
+    completion: copy "typename std::basic_string<_CharT, _Traits, _Alloc>::size_type std::basic_string<_CharT, _Traits, _Alloc>::copy(_CharT*, typename _Alloc::rebind<_CharT>::other::size_type, typename _Alloc::rebind<_CharT>::other::size_type) const [with _CharT = char, _Traits = std::char_traits<char>, _Alloc = std::allocator<char>]"
+    completion: c_str "const _CharT* std::basic_string<_CharT, _Traits, _Alloc>::c_str() const [with _CharT = char, _Traits = std::char_traits<char>, _Alloc = std::allocator<char>]"
+    completion: compare "int std::basic_string<_CharT, _Traits, _Alloc>::compare(const std::basic_string<_CharT, _Traits, _Alloc>&) const [with _CharT = char, _Traits = std::char_traits<char>, _Alloc = std::allocator<char>]"
+    completion: compare "int std::basic_string<_CharT, _Traits, _Alloc>::compare(typename _Alloc::rebind<_CharT>::other::size_type, typename _Alloc::rebind<_CharT>::other::size_type, const std::basic_string<_CharT, _Traits, _Alloc>&) const [with _CharT = char, _Traits = std::char_traits<char>, _Alloc = std::allocator<char>]"
+    completion: compare "int std::basic_string<_CharT, _Traits, _Alloc>::compare(typename _Alloc::rebind<_CharT>::other::size_type, typename _Alloc::rebind<_CharT>::other::size_type, const std::basic_string<_CharT, _Traits, _Alloc>&, typename _Alloc::rebind<_CharT>::other::size_type, typename _Alloc::rebind<_CharT>::other::size_type) const [with _CharT = char, _Traits = std::char_traits<char>, _Alloc = std::allocator<char>]"
+    completion: compare "int std::basic_string<_CharT, _Traits, _Alloc>::compare(const _CharT*) const [with _CharT = char, _Traits = std::char_traits<char>, _Alloc = std::allocator<char>]"
+    completion: compare "int std::basic_string<_CharT, _Traits, _Alloc>::compare(typename _Alloc::rebind<_CharT>::other::size_type, typename _Alloc::rebind<_CharT>::other::size_type, const _CharT*) const [with _CharT = char, _Traits = std::char_traits<char>, _Alloc = std::allocator<char>]"
+    completion: compare "int std::basic_string<_CharT, _Traits, _Alloc>::compare(typename _Alloc::rebind<_CharT>::other::size_type, typename _Alloc::rebind<_CharT>::other::size_type, const _CharT*, typename _Alloc::rebind<_CharT>::other::size_type) const [with _CharT = char, _Traits = std::char_traits<char>, _Alloc = std::allocator<char>]"
+
+An output format is `completion: <name> "<summary>"`.
+
+Currently, code completion is available for C/C++. No need to say, code completion can be used in any code that is able to be compiled with GCC 4.4. Code completion is enabled after `.` and `->` in C, and `::` in C++.
+
+### `gccrec` ###
+
+It seems to be not difficult story to realize code completion in editors by using code completion command that is described in the previous section. Basically, that is true, however there is a big problem that editors can never know GCC compiler options for an editing file. Consider the following command.
+
+    $ gcc -I../some/include/path -DSOME_SWITCH -c test.cpp
+
+`test.cpp` may include some headers from `../some/include/path`, and errors may occur without `SOME_SWITCH` enabled. Probably code completion will be ended with errors in such cases. And in general, there command is written in `Makefile`, so it is difficult to get valid compiler options.
+
+`gccrec` is a GCC wrapper for resolving that problem. GCC wrapper is a program that behaves as GCC but perform some special processes around the compilation. `gccrec` records a mapping of a source file and the compiler options to a database before delegating to GCC. After recording, you can replay the command by giving the source file.
+
+Consider the following example.
+
+    $ gcc -I../some/include/path -DSOME_SWITCH -c test.c
+
+To recrod, put `gccrec` before `gcc`.
+
+    $  gccrec gcc -I../some/include/path -DSOME_SWITCH -c test.c
+
+`gccrec` will extract a source file (`test.c` in this case) from the compiler options, and will records a mapping to the database.
+
+The database is located at `~/.gccrec` in a format of SQLite3. Let's peek a little.
+
+    $ sqlite3 ~/.gccrec
+    sqlite> select file, args from gccrec;
+    /home/tomo/tmp/test.c|-I../some/include/path -DSOME_SWITCH -c
+
+You may see the mapping is recorded. To replay the recorded command, execute `gccrec` with `-r` option and the soruce file.
+
+    $ gccrec -r test.c
+
+By specifying `-v` option, you can see the actual command in output.
+
+    $ gccrec -v -r test.c
+    gcc -I../some/include/path -DSOME_SWITCH -c /home/tomo/tmp/test.c
+
+You may realize already, editors will use `gccrec` command with giving a editing file for compilation and code completion.
+
+Give a mimic example. First of all, users have to recrod a compiler options with `gccrec`. Note that you have to record with `gcc-code-assist` or `g++-code-assist` not `gcc` and `g++` so that code completion will be available later.
+
+    $ gccrec g++-code-assist -c test.cpp
+
+When code completion requested, editors interanlly executes the following command.
+
+    $ gccrec -v -r test.cpp -fsyntax-only -code-completion-at=$PWD/test.cpp:5:7
+    completion: ...
+
+It is important that **recording the compiler options with `gccrec` first**. It is all you need to do.
+
+#### Build Tools Support ####
+
+Many projects use build tools such like `make`. In such projects, it is hard to record all of source files manually. `gccrec` can handle such cases.
+
+Generally, `Makefile` can take `CC` and `CXX` from external like:
+
+    $ make CC='my-gcc' CXX='my-g++'
+
+You can record all of source files in the project by using this characteristic.
+
+    $ make clean
+    $ make CC='gccrec gcc-code-assist' CXX='gccrec g++-code-asssist'
+
+Actual completion will be done during record. It is because of making recording success as much as possible.
+
+Many records will be recorded at `~/.gccrec`. You don't need to do this again unlesss the compiler options is changed or a new file is added.
+
+We checked code completion is available in [WebKit](http://webkit.org/), [Mozilla Firefox](http://mozilla.com/firefox/), and [Google V8](http://code.google.com/p/v8/) by using this technique.
+
+### `autopch` ###
+
+`autopch` is a GCC wrapper improving GCC's analyzing performance. It has been named because it applies precompiled header automatically. Using precompiled header, compilation performance will be improved notably. Especially, it is very important for a field such as code completion that requires high responsibility.
+
+However, there is a big limitation in precompiled header. That is, translation unit can include only one precompiled header. It is main limitation of precompiled header, however, usually two or more headers will be included like:
+
+test.cpp:
+
+    #include <iostream>
+    #include <string>
+    #include <vector>
+    int main() {...}
+
+In such case, a technique making a header called `stdafx.h` that will precompiled is used.
+
+stfafx.h:
+
+    #include <iostream>
+    #include <string>
+    #include <vector>
+
+test.cpp:
+
+    #include <stdafx.h>
+    int main() {...}
+
+Precompile:
+
+    $ # Only once
+    $ g++ stdafx.h
+
+Compile:
+
+    $ g++ -c test.cpp
+
+By this, compilation perfomance is actually improved, but it is too boring. This is a reason why use of precompiled header is not increased. `autopch` is a true tool for automating this boring instructions. It is easy to use. Just put `autopch` before `gcc`. Note that without `-c` option, `autopch` will not make a precompiled header.
+
+    $ autopch g++ -c test.cpp
+
+
+First time to compile may be slow, but twice or later will be fast. Dependency files and actual precompiled headers are stored at `~/.autopch`. Be careful to use autopch because precompiled header would be huge.
+
+GCCSense uses `autopch` for improving code completion responsibility.
+
+
+#### Benchmark ####
+
+    $ # no autopch
+    $ time g++ -fsyntax-only -c test.cpp
+    g++ -fsyntax-only -c test.cpp  4.49s user 0.19s system 95% cpu 4.915 total
+    $ # autpoch first time
+    $ time autopch g++ -fsyntax-only -c test.cpp
+    autopch g++ -fsyntax-only -c test.cpp  10.16s user 0.97s system 96% cpu 11.531 total
+    $ # autopch second time
+    $ time autopch g++ -fsyntax-only -c test.cpp
+    autopch g++ -fsyntax-only -c test.cpp  0.42s user 0.06s system 94% cpu 0.504 total
+    $ # autopch third time
+    time autopch g++ -fsyntax-only -c test.cpp
+    autopch g++ -fsyntax-only -c test.cpp  0.38s user 0.10s system 90% cpu 0.524 total
+
+### Editors ###
+
+See [installation](#Installation) for how to install an extension or plugin of individual editor. Remeber that to use code completion from editors, **you need to record a compiler options with `gccrec` first**. See [`gccrec`](#) for how to record. In a case that a source file can be compiled without any compile options, you don't need to record.
+
+#### Emacs ####
+
+Before use, please diagnose the installation was finished correctly with `M-x gccsense-diagnose`. A message `"Everything OK!"` will be showed in minibuffer if there is no problem. Please fix problems if you had errors or contact me if you can't resolve them.
+
+To complete, do `M-x gccsense-complete` after `.` or `->`. **Code completion is not avaiable in a non existed file**.
+
+![](gccsense-emacs-1.png)
+
+You can complete with `M-x ac-complete-gccsense` if you use [Auto Complete Mode](http://cx4a.org/software/auto-complete/).
+
+![](gccsense-emacs-2.png)
+
+You may bind to `C-c .` like:
+
+    (add-hook 'c-mode-common-hook
+              (lambda ()
+                (local-set-key (kbd "C-c .") 'gccsense-complete)
+                ;; or
+                (local-set-key (kbd "C-c .") 'ac-complete-gccsense)))
+
+You can use syntax-check with [Flymake](http://flymake.sourceforge.net/). It would be accurate and fast than original by using `gccrec` intead of `Makefile`. To use `gccrec` Flymake, do `M-x gccsense-flymake-setup` for each buffer. You may write the following code into your `~/.emacs`.
+
+    (add-hook 'c-mode-common-hook
+              (lambda ()
+                (flymake-mode)
+                (gccsense-flymake-setup)))
+
+#### Vim ####
+
+Before use, please diagnose the installation was finished correctly with `:call GCCSenseDiagnose()`. Please fix problems if you had errors or contact me if you can't resolve them.
+
+To complete, do `^X ^U` after `.` or `->`. **Code completion is not avaiable in a non existed file**.
+
+![](gccsense-vim.png)
+
+To complete with omni completion, set `g:gccsenseUseOmniFunc` to `1`.
+
+    let g:gccsenseUseOmniFunc = 1
+
+Now you can complete with `^X ^O`.
+
+Limitations
+-----------
+
+* Objective-C and Java or else which is supported in GCC is not supported
+* Development assist is not supported in a code which can not be compiled with GCC 4.4
+* Development assist is not available in header files.
+
+Trouble Shooting
+----------------
+
+### Code completion doesn't work ###
+
+Do diagnose. In Emacs, do `M-x gccsense-diagnose`. In Vim, do `:call GCCSenseDiagnose()`. If there is no problem, please make sure that the editing file is recorded with `gccrec` correctly.
+
+    $ gccrec -v -r a_problem_file.cpp
+
+If you see `"record not found"`, it means you don't yet record with `gccrec`. Please record with `gccrec` with refering to [`gccrec`](#).
+
+If you couldn't use code completion, please contact me.
+
+[GCC]: http://gcc.gnu.org/
+[Ruby]: http://www.ruby-lang.org/
+[MacPorts]: http://www.macports.org/
+[SQLite]: http://www.sqlite.org/
+[RubyGems]: http://rubyforge.org/projects/rubygems/

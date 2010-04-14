@@ -1,10 +1,10 @@
-Title: GCCSense - C/C++のための開発援助ツール
+Title: GCCSense - C/C++のための最も賢い開発援助ツール
 CSS: style.css
 
 GCCSense
 ========
 
-*C/C++のための開発援助ツール*
+*C/C++のための最も賢い開発援助ツール*
 
 \[[English](index.txt)]
 
@@ -34,8 +34,18 @@ GCCSenseは[GCC][]のコード解析器を利用した開発援助ツールで�
 デモ
 ----
 
+* [YouTube](http://www.youtube.com/watch?v=sz68cCQ0Zpc)
+* [Ogg Theora with video tag](demo.txt)
+
 ダウンロード
 ------------
+
+GCCSenseとgcc-code-assistの両方をダウンロードしてください。
+
+### 最新安定板 ###
+
+* [gccsense-0.1.tar.bz2](/pub/gccsense/gccsense-0.1.tar.bz2)
+* [gcc-code-assist-0.1-4.4.4.tar.bz2](/pub/gccsense/gcc-code-assist-0.1-4.4.4.tar.bz2)
 
 ユーザーマニュアル
 ------------------
@@ -52,7 +62,21 @@ GCCSenseは[GCC][]のコード解析器を利用した開発援助ツールで�
 
 ソースコードは以下のGitリポジトリから取得できます。
 
-* <http://cx4a.org/repo/gccsense.git>
+* GCCSense
+
+  <http://cx4a.org/repo/gccsense.git>
+
+* gcc-code-assist
+
+  <http://cx4a.org/repo/gcc.git>
+
+ソースコードを取得するには次のコマンドを実行します。GCCのリポジトリは巨大なので注意してください。
+
+    $ git clone http://cx4a.org/repo/gccsense.git
+    $ git clone http://cx4a.org/repo/gcc.git
+    $ cd gcc
+    $ # code-assistブランチをチェックアウト
+    $ git checkout code-assist
 
 ライセンス
 ----------

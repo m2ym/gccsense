@@ -94,10 +94,10 @@ function! s:GCCSenseDiagnoseProgram(program, args, should_match, msg)
 endfunction
 
 function! GCCSenseDiagnose()
-    call s:GCCSenseDiagnoseProgram(g:gccsenseGCCRecProgram, '--version', 'gccrec', "`%s' is not executable from Vim or return error. Please make sure that the program was installed correctly.")
-    call s:GCCSenseDiagnoseProgram(g:gccsenseAutoPCHProgram, '--version', 'autopch', "`%s' is not executable from Vim or return error. Please make sure that the program was installed correctly.")
-    call s:GCCSenseDiagnoseProgram(g:gccsenseCDriver, '--version', 'gcc', "`%s' is not executable from Vim or return error. Please make sure that the program was installed correctly.")
-    call s:GCCSenseDiagnoseProgram(g:gccsenseCPPDriver, '--version', 'g++', "`%s' is not executable from Vim or return error. Please make sure that the program was installed correctly.")
+    call s:GCCSenseDiagnoseProgram(g:gccsenseGCCRecProgram, '--help', 'Usage', "`%s' is not executable from Vim or return error. Please make sure that the program was installed correctly.")
+    call s:GCCSenseDiagnoseProgram(g:gccsenseAutoPCHProgram, '--help', 'Usage', "`%s' is not executable from Vim or return error. Please make sure that the program was installed correctly.")
+    call s:GCCSenseDiagnoseProgram(g:gccsenseCDriver, '--help', '--help', "`%s' is not executable from Vim or return error. Please make sure that the program was installed correctly.")
+    call s:GCCSenseDiagnoseProgram(g:gccsenseCPPDriver, '--help', '--help', "`%s' is not executable from Vim or return error. Please make sure that the program was installed correctly.")
     call s:GCCSenseDiagnoseProgram(g:gccsenseCDriver, '-code-completion-at=x', 'no input file', "`%s' can not take `-code-completion-at' option. Make sure that gcc-code-assist was installed correctly and g:gccsenseCDriver points to that programs.")
     call s:GCCSenseDiagnoseProgram(g:gccsenseCPPDriver, '-code-completion-at=x', 'no input file', "`%s' can not take `-code-completion-at' option. Make sure that g++-code-assist was installed correctly and g:gccsenseCPPDriver points to that programs.")
 

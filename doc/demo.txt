@@ -1,0 +1,11 @@
+Title: GCCSense - Demo
+CSS: style.css
+
+GCCSense Demo
+=============
+
+[Index](index.txt)
+
+[YouTube mirror](http://www.youtube.com/watch?v=sz68cCQ0Zpc)
+
+<video src="gccsense-demo.ogv" controls="true" width="832" height="608" />

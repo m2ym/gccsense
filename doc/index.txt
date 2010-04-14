@@ -1,0 +1,87 @@
+Title: GCCSense - The most intelligent development tools for C/C++
+CSS: style.css
+
+GCCSense
+========
+
+*The most intelligent development tools for C/C++*
+
+\[[Japanese](index.ja.txt)]
+
+* * * *
+
+{toc}
+
+* * * *
+
+What is GCCSense ?
+------------------
+
+GCCSense is the most intelligent development tools for C/C++ using [GCC][]'s code analyzers. Using internal compiler information, it is capable to provide a high precise code completion functions. GCCSense is a standalone program, so any editors can use it.
+
+Features
+--------
+
+* High precise code completion
+* Automatic syntax check
+
+Screenshots
+-----------
+
+![](gccsense-emacs-2.png)
+![](gccsense-vim.png)
+
+Demo
+----
+
+* [YouTube](http://www.youtube.com/watch?v=sz68cCQ0Zpc)
+* [Ogg Theora with video tag](demo.txt)
+
+Downloads
+---------
+
+Download both GCCSense and gcc-code-assist.
+
+### Latest Stable ###
+
+* [gccsense-0.1.tar.bz2](/pub/gccsense/gccsense-0.1.tar.bz2)
+* [gcc-code-assist-0.1-4.4.4.tar.bz2](/pub/gccsense/gcc-code-assist-0.1-4.4.4.tar.bz2)
+
+User Manual
+-----------
+
+[GCCSense User Manual](manual.txt)
+
+User's Voice
+------------
+
+Please send me a comment with your name (or anonymous) to [tomo@cx4a.org](mailto: tomo@cx4a.org) if you like it. Any comments are welcome.
+
+Source Code
+-----------
+
+Git repositories are available:
+
+* GCCSense
+
+  <http://cx4a.org/repo/gccsense.git>
+
+* gcc-code-assist
+
+  <http://cx4a.org/repo/gcc.git>
+
+To obtain source codes, execute the following commands. Be careful, GCC repository is so big.
+
+    $ git clone http://cx4a.org/repo/gccsense.git
+    $ git clone http://cx4a.org/repo/gcc.git
+    $ cd gcc
+    $ # checkout code-assist branch
+    $ git checkout code-assist
+
+License
+-------
+
+This software is distributed under the term of [GPLv3+][].
+
+[GCC]: http://gcc.gnu.org/
+[GPLv3+]: http://gplv3.fsf.org/
