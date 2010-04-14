@@ -14,7 +14,7 @@ clean:
 
 package: clean
 	mkdir ${PACKAGE}
-	cp -rp Makefile README TODO bin doc etc ${PACKAGE}
+	cp -rp Makefile README TODO GPL.txt bin doc etc ${PACKAGE}
 
 tar.bz2: package
 	tar cjf ${PACKAGE}.tar.bz2 ${PACKAGE}
