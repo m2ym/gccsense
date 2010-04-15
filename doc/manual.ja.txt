@@ -394,6 +394,11 @@ GCCSenseではコード補完などのレスポンス性能を改善するため
 
 それでもコード補完できない場合は開発者に連絡してください。
 
+バグレポート
+------------
+
+[GCCSenseのバグトラッキングシステム](http://cx4a.org/redmine/projects/gccsense)に新しいチケットを登録してください。
+
 [GCC]: http://gcc.gnu.org/
 [Ruby]: http://www.ruby-lang.org/
 [MacPorts]: http://www.macports.org/

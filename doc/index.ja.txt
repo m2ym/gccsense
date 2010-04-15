@@ -78,6 +78,11 @@ GCCSenseとgcc-code-assistの両方をダウンロードしてください。
     $ # code-assistブランチをチェックアウト
     $ git checkout code-assist
 
+バグレポート
+------------
+
+[GCCSenseのバグトラッキングシステム](http://cx4a.org/redmine/projects/gccsense)に新しいチケットを登録してください。
+
 ライセンス
 ----------
 
