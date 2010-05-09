@@ -78,8 +78,8 @@ To obtain source codes, execute the following commands. Be careful, GCC reposito
     $ # checkout code-assist branch
     $ git checkout code-assist
 
-Reporing Bugs
--------------
+Reporting Bugs
+--------------
 
 Visit [GCCSense Bug Tracking System](http://cx4a.org/redmine/projects/gccsense) and create a new ticket.
 

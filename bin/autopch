@@ -21,10 +21,8 @@ require 'stringio'
 require 'digest/md5'
 require 'fileutils'
 
-class Shellwords
-  def self.unshellwords(array)
-    array.map {|elt| elt.index(/\s/) ? "\"#{elt.gsub(/([\"$])/, '\\1')}\"" : elt}.join(' ')
-  end
+def Shellwords.unshellwords(array)
+  array.map {|elt| elt.index(/\s/) ? "\"#{elt.gsub(/([\"\\$])/, '\\1')}\"" : elt}.join(' ')
 end
 
 class AutoPCH

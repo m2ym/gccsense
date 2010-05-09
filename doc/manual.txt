@@ -394,8 +394,8 @@ If you see `"record not found"`, it means you don't yet record with `gccrec`. Pl
 
 If you couldn't use code completion, please contact me.
 
-Reporing Bugs
--------------
+Reporting Bugs
+--------------
 
 Visit [GCCSense Bug Tracking System](http://cx4a.org/redmine/projects/gccsense) and create a new ticket.
 
