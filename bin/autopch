@@ -20,6 +20,7 @@ require 'pathname'
 require 'stringio'
 require 'digest/md5'
 require 'fileutils'
+require 'shellwords'
 
 def Shellwords.unshellwords(array)
   array.map {|elt| elt.index(/\s/) ? "\"#{elt.gsub(/([\"\\$])/, '\\1')}\"" : elt}.join(' ')
