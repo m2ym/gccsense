@@ -27,7 +27,7 @@ def Shellwords.unshellwords(array)
 end
 
 class AutoPCH
-  VERSION = '0.1'
+  VERSION = '0.2'
 
   class PPDirectiveReader
     DIRECTIVE_REGEXP = /^\s*#/
@@ -66,14 +66,14 @@ class AutoPCH
       # skip comments
       while l && start = l.index(/\/[\/*]/)
         if $& == '//'         # c++ style comment
-          l = l[0, start]
+          l = l[0, start] + "\n"
         else                  # c style comment
           pos = start
           while !(last = l.index('*/', pos)) && r = @io.gets
             pos = l.length
             l << r
           end
-          l[start, last + 2] = ' ' if last
+          l[start, last + 2] = "\n" if last
         end
       end
 
@@ -135,7 +135,7 @@ class AutoPCH
       @driver = args.shift
       die_with_help(opt, 'driver not given') unless @driver
 
-      @lang = @driver =~ /[gc]\+\+/ ? 'c++' : 'c'
+      @lang ||= @driver =~ /[gc]\+\+/ ? 'c++' : 'c'
     end
 
     # parse gcc args
@@ -185,6 +185,10 @@ class AutoPCH
   end
 
   def fallback
+    if @verbose
+      $stderr.puts 'fallbacking: no input files' if @input_files.empty?
+      $stderr.puts 'fallbacking: -c option not found' if !@c_opt_given
+    end
     exec([@driver, @driver], *@args)
   end
 

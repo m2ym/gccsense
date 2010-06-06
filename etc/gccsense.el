@@ -1,4 +1,4 @@
-;;; gccsense.el --- GCCSense client for Emacs
+;;; gccsense.el --- GCCSense client for GNU Emacs
 
 ;; Copyright (C) 2010  Tomohiro Matsuyama
 
@@ -39,12 +39,17 @@
   :type 'string
   :group 'gccsense)
 
-(defcustom gccsense-c-driver "gcc-code-assist"
+(defcustom gccsense-ctagsfind-program "ctagsfind"
+  "Path to ctagsfind program."
+  :type 'string
+  :group 'gccsense)
+
+(defcustom gccsense-c-driver "gcc-gdt"
   "Path to C compiler driver."
   :type 'string
   :group 'gccsense)
 
-(defcustom gccsense-c++-driver "g++-code-assist"
+(defcustom gccsense-c++-driver "g++-gdt"
   "Path to C++ compiler driver."
   :type 'string
   :group 'gccsense)
@@ -53,6 +58,52 @@
   "Whether or not use autopch program. This may improve performance."
   :type 'boolean
   :group 'gccsense)
+
+(defvar gccsense-last-command-temp-name nil
+  "Temporary file name for the last command to execute.")
+
+(defvar gccsense-last-command-real-name nil
+  "Real file name for the last command to execute.")
+
+(defvar gccsense-identifier-syntax-table
+  (let ((table (copy-syntax-table c-mode-syntax-table)))
+    (modify-syntax-entry ?< "(>" table)
+    (modify-syntax-entry ?> ")<" table)
+    table))
+
+(defun gccsense-get-temp-name (filename)
+  (concat (file-name-directory filename) ".gccsense." (file-name-nondirectory filename)))
+
+(defun gccsense-current-column ()
+  "Return the current column which can be read by GCC."
+  (1+ (- (point) (line-beginning-position))))
+
+(defun gccsense-message (format &rest args)
+  (if args
+      (setq format (format format args)))
+  (if (fboundp 'popup-tip)
+      (popup-tip format :margin t)
+    (message "%s" format)))
+
+(defun gccsense-strip-template-parameters (name)
+  (with-temp-buffer
+    (insert name)
+    (goto-char (point-min))
+    (with-syntax-table gccsense-identifier-syntax-table
+      (while (not (eolp))
+        (forward-word)
+        (if (eq (char-after) ?<)
+            (kill-sexp))))
+    (buffer-string)))
+
+(defun gccsense-device-string (string separators)
+  (if (string-match separators string)
+      (list (substring string 0 (match-beginning 0))
+            (substring string (match-end 0)))
+    (list string)))
+
+(defun gccsense-vim-regexp-to-emacs-regexp (regexp)
+  (replace-regexp-in-string "[*+]" "\\\\\\&" regexp))
 
 (defun gccsense-gccrec-command (filename tempfile &rest rest)
   (append `(,gccsense-gccrec-program
@@ -74,37 +125,81 @@
     (with-current-buffer standard-output
       (apply 'call-process (car command) nil t nil (cdr command)))))
 
-(defun gccsense-get-temp-name (filename)
-  (concat (file-name-directory filename) ".gccsense." (file-name-nondirectory filename)))
-
-(defun gccsense-parse-completion-string (string)
-  (when (string-match "^completion: \\([^ ]*\\)\\(?: +\"\\([^\"]+\\)\"\\)?$" string)
-    (let ((name (match-string 1 string))
-          (decl (match-string 2 string)))
-      (list name decl))))
-
-(defun gccsense-get-completions (&optional buffer point)
-  (or buffer (setq buffer (current-buffer)))
-  (or point (setq point (point)))
+(defun gccsense-buffer-command (buffer point command)
   (with-current-buffer buffer
     (save-excursion
       (goto-char point)
       (let* ((filename (buffer-file-name buffer))
              (tempfile (gccsense-get-temp-name filename))
              (line (line-number-at-pos))
-             (column (1+ (current-column))))
+             (column (gccsense-current-column)))
+        (setq gccsense-last-command-temp-name tempfile
+              gccsense-last-command-real-name filename)
         (write-region (point-min) (point-max) tempfile nil 0)
         (unwind-protect
-            (delq nil
-                  (mapcar 'gccsense-parse-completion-string
-                          (split-string (gccsense-command-to-string
-                                         (gccsense-gccrec-command
-                                          filename
-                                          tempfile
-                                          (format "-code-completion-at=%s:%s:%s"
-                                                  tempfile line column)))
-                                        "\n")))
+            (gccsense-command-to-string
+             (gccsense-gccrec-command
+              filename
+              tempfile
+              (format "-%s=%s:%s:%s" command tempfile line column)))
           (delete-file tempfile))))))
+
+(defun gccsense-parse-completion-string (string)
+  (if (string-match "^completion:" string)
+      (cdr (split-string string "\t"))))
+
+(defun gccsense-get-completions (&optional buffer point)
+  (delq nil
+        (mapcar 'gccsense-parse-completion-string
+                (split-string (gccsense-buffer-command (or buffer (current-buffer))
+                                                       (or point (point))
+                                                       "-code-completion-at")
+                              "\n"))))
+
+(defun gccsense-parse-declaration-string (string)
+  (if (string-match "^declaration:" string)
+      (cdr (split-string string "\t"))))
+
+(defun gccsense-get-declarations (&optional buffer point)
+  (delq nil
+        (mapcar 'gccsense-parse-declaration-string
+                (split-string (gccsense-buffer-command (or buffer (current-buffer))
+                                                       (or point (point))
+                                                       "-declaration-at")
+                              "\n"))))
+
+(defun gccsense-open-declaration (decl)
+  (when decl
+    (let ((file (nth 2 decl))
+          (dir (nth 3 decl))
+          (line (string-to-number (nth 4 decl))))
+      (unless (file-name-absolute-p file)
+        (setq file (file-truename (concat dir "/" file))))
+      (if (equal file gccsense-last-command-temp-name)
+          (setq file gccsense-last-command-real-name))
+      (if (file-exists-p file)
+          (progn
+            (find-file file)
+            (goto-line line)
+            (back-to-indentation))
+        (gccsense-message "No such file: %s" file)))))
+
+(defun gccsense-open-definition (def)
+  (when def
+    (let ((path (cadr def))
+          (address (nth 2 def)))
+      (find-file path)
+      (cond
+       ((string-match "^[0-9]+$" address)
+        (goto-line (string-to-number address)))
+       ((string-match "^/\\(.+\\)/$" address)
+        (goto-char (point-min))
+        (re-search-forward (gccsense-vim-regexp-to-emacs-regexp (match-string 1 address)) nil t)
+        (back-to-indentation))
+       ((string-match "^\\?\\(.+\\)\\?$" address)
+        (goto-char (point-max))
+        (re-search-backward (gccsense-vim-regexp-to-emacs-regexp (match-string 1 address)) nil t)
+        (back-to-indentation))))))
 
 (defun gccsense-complete ()
   (interactive)
@@ -125,7 +220,7 @@
           (setq prefix common))
         (cond
          ((null list)
-          (message "No completions"))
+          (gccsense-message "No completions"))
          ((eq (length list) 1)
           (let ((window (get-buffer-window buffer)))
             (if window
@@ -136,6 +231,72 @@
           (with-output-to-temp-buffer buffer
             (display-completion-list list prefix))
           (display-buffer buffer))))))
+
+(defun gccsense-declaration-at-point ()
+  (interactive)
+  (let* ((decls (gccsense-get-declarations))
+         (decl (mapconcat 'cadr decls "\n\n")))
+    (gccsense-message (if decls decl "No declaration found"))))
+
+(defun gccsense-open-declaration-at-point ()
+  (interactive)
+  (let ((decls (gccsense-get-declarations)))
+    (if decls
+        (gccsense-open-declaration
+         (if (and (fboundp 'popup-menu*)
+                  (> (length decls) 1))
+             (popup-menu* (mapcar (lambda (decl)
+                                    (let ((name (car decl))
+                                          (file (nth 2 decl))
+                                          (dir (nth 3 decl))
+                                          (line (nth 4 decl)))
+                                      (popup-make-item (format "%s (%s:%s)"
+                                                               name
+                                                               (file-truename (concat dir "/" file))
+                                                               line)
+                                                       :value decl)))
+                                  decls)
+                          :margin t
+                          :scroll-bar t)
+           (gccsense-open-declaration (car decls))))
+      (gccsense-message "No declaration found"))))
+
+(defun gccsense-open-definition-at-point ()
+  (interactive)
+  (let ((defs (apply 'append
+                     (mapcar (lambda (decl)
+                               (let ((qname (gccsense-strip-template-parameters (car decl))))
+                                 (when (string-match "^\\(?:\\(.+\\)\\(?:::\\|\\.\\)\\)?\\(.+\\)$" qname)
+                                   (setq name (match-string 2 qname))
+                                   (if name
+                                       (setq base (match-string 1 qname))
+                                     (setq name (match-string 1 qname)))
+                                   (delq nil
+                                         (mapcar (lambda (def)
+                                                   (let* ((fields (gccsense-device-string def "\t"))
+                                                          (path (car fields))
+                                                          (address (cadr fields)))
+                                                     (if (and path address)
+                                                         (list qname path address))))
+                                                 (split-string (gccsense-command-to-string
+                                                                (list gccsense-ctagsfind-program
+                                                                      "-F" "kind=f"
+                                                                      "-F" (concat "class=" (match-string 1 qname))
+                                                                      (match-string 2 qname)))
+                                                               "\n"))))))
+                             (gccsense-get-declarations)))))
+    (if defs
+        (gccsense-open-definition
+         (if (and (fboundp 'popup-menu*)
+                  (> (length defs) 1))
+             (popup-menu* (mapcar (lambda (def)
+                                    (popup-make-item (format "%s (%s)" (car def) (cadr def))
+                                                     :value def))
+                                  defs)
+                          :margin t
+                          :scroll-bar t)
+           (car defs)))
+      (gccsense-message "No definition found"))))
 
 
 
@@ -219,8 +380,9 @@ You may add a directory where the program was installed into `exec-path' variabl
 
    ((and (not (string-match "unrecognized option" (gccsense-command-to-string (list gccsense-c-driver "-code-completion-at=x"))))
          (not (string-match "unrecognized option" (gccsense-command-to-string (list gccsense-c++-driver "-code-completion-at=x")))))
-    "GCC driver can not take `-code-completion-at' option. Make sure that gcc-code-assist and g++-code-assist
-was installed correctly and `gccsense-c-driver' and `gccsense-c++-driver' points to that programs.")
+    (format "GCC driver can not take `-code-completion-at' option. Make sure that %s and %s
+was installed correctly and `gccsense-c-driver' and `gccsense-c++-driver' points to that programs."
+            gccsense-c-driver gccsense-c++-driver))
 
    ((progn
       (save-window-excursion

@@ -27,7 +27,7 @@ def Shellwords.unshellwords(array)
 end
 
 class GCCRec
-  VERSION = '0.1'
+  VERSION = '0.2'
 
   DB_NAME = '.gccrec'
   GCC_ONE_ARG_REGEXP = /^-(?:o|I|idirafter|imacros|include|iprefix|isystem|iwithprefix|iwithprefixbefore|L|D|U|x|MF|MT|MQ|aux-info|-param|A|Xlinker|u)(.*)$/
@@ -59,7 +59,8 @@ class GCCRec
     @workdir = Dir.getwd
   end
 
-  def process(args)
+  def process(program, args)
+    @program = program
     @args = args.dup
     parse_own_args
     if @replay
@@ -72,6 +73,21 @@ class GCCRec
   end
 
   def parse_own_args
+    @db_file = "#{ENV['HOME']}/#{DB_NAME}"
+    
+    if File.symlink?(@program)
+      # find alternative driver in PATH environment variable ignoring itself
+      path = Pathname.new(@program)
+      dir = path.dirname.realpath rescue nil
+      @driver = find_executable(path.basename, dir) if dir
+      if @driver
+        @comp_args = @args.dup
+        return
+      else
+        die('driver not given')
+      end
+    end
+
     OptionParser.new('Usage: gccrec [options] [gcc-driver] [gcc-options]') do |opt|
       opt.version = VERSION
       opt.on('-d', '--driver=DRIVER')    {|v| @driver = v }
@@ -91,8 +107,18 @@ class GCCRec
         die_with_help(opt, 'driver not given') unless @driver
       end
       @comp_args = @args.dup
-      @db_file = "#{ENV['HOME']}/#{DB_NAME}" unless @db_file
     end
+  end
+
+  def find_executable(name, except)
+    ENV['PATH'].split(File::PATH_SEPARATOR).each {|dir|
+      dir = Pathname.new(dir).realpath rescue nil
+      if dir
+        prog = dir + name
+        return prog.to_s if dir && dir != except && prog.executable?
+      end
+    }
+    false
   end
 
   def parse_gcc_args
@@ -157,7 +183,7 @@ class GCCRec
       @db = DB.new(@db_file)
       yield @db
     ensure
-      @db.close
+      @db.close if @db
       @db = nil
     end
   end
@@ -175,4 +201,4 @@ class GCCRec
   end
 end
 
-GCCRec.new.process(ARGV) if $0 == __FILE__
+GCCRec.new.process($0, ARGV)
