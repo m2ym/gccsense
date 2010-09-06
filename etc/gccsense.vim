@@ -28,11 +28,11 @@ if !exists('g:gccsenseAutoPCHProgram')
 endif
 
 if !exists('g:gccsenseCDriver')
-    let g:gccsenseCDriver = 'gcc-code-assist'
+    let g:gccsenseCDriver = 'gcc-gdt'
 endif
 
 if !exists('g:gccsenseCPPDriver')
-    let g:gccsenseCPPDriver = 'g++-code-assist'
+    let g:gccsenseCPPDriver = 'g++-gdt'
 endif
 
 if !exists('g:gccsenseUseAutoPCH')
@@ -83,8 +83,8 @@ function! GCCSenseComplete(findstart, base)
         call delete(tempfile)
         let completions = []
         for item in result
-            if item =~ '^completion: ' . a:base
-                call add(completions, split(item, ' ')[1])
+            if item =~ '^completion:\t' . a:base
+                call add(completions, split(item, "\t")[1])
             endif
         endfor
         return completions
@@ -114,8 +114,8 @@ function! GCCSenseDiagnose()
     call s:GCCSenseDiagnoseProgram(g:gccsenseAutoPCHProgram, '--help', 'Usage', "`%s' is not executable from Vim or return error. Please make sure that the program was installed correctly.")
     call s:GCCSenseDiagnoseProgram(g:gccsenseCDriver, '--help', '--help', "`%s' is not executable from Vim or return error. Please make sure that the program was installed correctly.")
     call s:GCCSenseDiagnoseProgram(g:gccsenseCPPDriver, '--help', '--help', "`%s' is not executable from Vim or return error. Please make sure that the program was installed correctly.")
-    call s:GCCSenseDiagnoseProgram(g:gccsenseCDriver, '-code-completion-at=x', 'no input file', "`%s' can not take `-code-completion-at' option. Make sure that gcc-code-assist was installed correctly and g:gccsenseCDriver points to that programs.")
-    call s:GCCSenseDiagnoseProgram(g:gccsenseCPPDriver, '-code-completion-at=x', 'no input file', "`%s' can not take `-code-completion-at' option. Make sure that g++-code-assist was installed correctly and g:gccsenseCPPDriver points to that programs.")
+    call s:GCCSenseDiagnoseProgram(g:gccsenseCDriver, '-code-completion-at=x', 'no input file', "`%s' can not take `-code-completion-at' option. Make sure that gcc-gdt was installed correctly and g:gccsenseCDriver points to that programs.")
+    call s:GCCSenseDiagnoseProgram(g:gccsenseCPPDriver, '-code-completion-at=x', 'no input file', "`%s' can not take `-code-completion-at' option. Make sure that g++-gdt was installed correctly and g:gccsenseCPPDriver points to that programs.")
 
     echo "Finish!"
 endfunction
