@@ -308,34 +308,35 @@ You may add a directory where the program was installed into `exec-path' variabl
 
 (defun gccsense-diagnose ()
   (interactive)
-  (gccsense-diagnose-checklist
-   (gccsense-diagnose-check-program gccsense-gccrec-program)
-   (gccsense-diagnose-check-program gccsense-autopch-program)
-   (gccsense-diagnose-check-program gccsense-c-driver)
-   (gccsense-diagnose-check-program gccsense-c++-driver)
+  (dont-compile
+    (gccsense-diagnose-checklist
+     (gccsense-diagnose-check-program gccsense-gccrec-program)
+     (gccsense-diagnose-check-program gccsense-autopch-program)
+     (gccsense-diagnose-check-program gccsense-c-driver)
+     (gccsense-diagnose-check-program gccsense-c++-driver)
 
-   ((and (not (string-match "unrecognized option" (gccsense-command-to-string (list gccsense-c-driver "-code-completion-at=x"))))
-         (not (string-match "unrecognized option" (gccsense-command-to-string (list gccsense-c++-driver "-code-completion-at=x")))))
-    (format "GCC driver can not take `-code-completion-at' option. Make sure that %s and %s
+     ((and (not (string-match "unrecognized option" (gccsense-command-to-string (list gccsense-c-driver "-code-completion-at=x"))))
+           (not (string-match "unrecognized option" (gccsense-command-to-string (list gccsense-c++-driver "-code-completion-at=x")))))
+      (format "GCC driver can not take `-code-completion-at' option. Make sure that %s and %s
 was installed correctly and `gccsense-c-driver' and `gccsense-c++-driver' points to that programs."
-            gccsense-c-driver gccsense-c++-driver))
+              gccsense-c-driver gccsense-c++-driver))
 
-   ((progn
-      (save-window-excursion
-        (save-excursion
-          (find-file-literally "/tmp/test-gccsense-diagnose.cpp")
-          (erase-buffer)
-          (insert "#include <string>
+     ((progn
+        (save-window-excursion
+          (save-excursion
+            (find-file-literally "/tmp/test-gccsense-diagnose.cpp")
+            (erase-buffer)
+            (insert "#include <string>
 int main() {
 std::string s;
 s.
 }")
-          (save-buffer)
-          (goto-line 4)
-          (move-to-column 2)
-          (assoc "c_str" (gccsense-get-completions)))))
-    "Can not obtain completions for std::string.
-You may not use code-completion.")))
+            (save-buffer)
+            (goto-line 4)
+            (move-to-column 2)
+            (assoc "c_str" (gccsense-get-completions)))))
+      "Can not obtain completions for std::string.
+You may not use code-completion."))))
 
 (provide 'gccsense)
 ;;; gccsense.el ends here
