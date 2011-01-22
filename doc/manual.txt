@@ -166,7 +166,7 @@ GCCSense is made of the following four pats. Sections you should read are emphas
 
   A GCC wrapper for enabling precompiled header automatically
 
-* **[Editros](#)**
+* **[Editors](#)**
 
   Editos such like Emacs and Vim
 
