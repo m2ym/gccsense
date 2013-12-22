@@ -202,7 +202,7 @@ class AutoPCH
   def compile(c, h)
     args = (h ? ['-include', h] : []) + @cc_args + ['-I', @cwd, c]
     unless system([@driver, @driver], *args)
-      exit $?
+      exit $?.to_i
     end
   end
 
@@ -246,14 +246,14 @@ class AutoPCH
     args = @pch_args + ['-I', @cwd, '-MM', '-MF', dep, tmp_h]
     $stderr.puts "generating dependency file: #{Shellwords.unshellwords([@driver, *args])}" if @verbose
     unless system([@driver, @driver], *args)
-      exit $?
+      exit $?.to_i
     end
 
     # compile header
     args = @pch_args + ['-I', @cwd, '-x', "#{@lang}-header", tmp_h]
     $stderr.puts "compiling header: #{Shellwords.unshellwords([@driver, *args])}" if @verbose
     unless system([@driver, @driver], *args)
-      exit $?
+      exit $?.to_i
     end
 
     if file_exists? dep, tmp_h, tmp_pch
