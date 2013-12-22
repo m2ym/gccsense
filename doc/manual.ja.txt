@@ -47,7 +47,7 @@ GCCSenseの動作およびGCCのビルドに必要なパッケージをインス
 
 #### Debian系システム #### {#pre_debian-system}
 
-    $ sudo apt-get install build-essential libgmp3-dev libmpfr-dev flex ruby rubygems libsqlite3-ruby
+    $ sudo apt-get install build-essential libgmp3-dev libmpc-dev libmpfr-dev flex ruby rubygems libsqlite3-ruby
 
 #### FreeBSD系システム #### {#pre_freebsd-system}
 

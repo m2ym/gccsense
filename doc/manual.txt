@@ -47,7 +47,7 @@ Install required packages that is needed for GCCSense and for building GCC.
 
 #### Debian Systems #### {#pre_debian-system}
 
-    $ sudo apt-get install build-essential libgmp3-dev libmpfr-dev flex ruby rubygems libsqlite3-ruby
+    $ sudo apt-get install build-essential libgmp3-dev libmpc-dev libmpfr-dev flex ruby rubygems libsqlite3-ruby
 
 #### FreeBSD Systems #### {#pre_freebsd-system}
 
@@ -166,7 +166,7 @@ GCCSense is made of the following four pats. Sections you should read are emphas
 
   A GCC wrapper for enabling precompiled header automatically
 
-* **[Editros](#)**
+* **[Editors](#)**
 
   Editos such like Emacs and Vim
 
